@@ -8,6 +8,7 @@
 #include "circular_buffer.h"
 #include <string>
 #include <mutex>
+#include <chrono>
 
 #define LINBUFSIZE 1024
 
@@ -19,15 +20,38 @@ typedef std::vector<uint8_t> Msg;
 
 struct SerialMan : Periodic<SerialMan>
 {
-	SerialMan() = delete;
+	SerialMan() 
+	{
+		serial = new Serial();
+	}
+
 	SerialMan(std::string port, int baud) 
 	{
 		serial = new Serial(port, baud);
-		this->taskPeriod = 10;
 	}
 
-	void open() { GUARD(myMutex); serial->open(); }
+	void setPort(std::string port, int baud)
+	{
+		serial->setPort(port);
+		serial->setBaudrate(baud);
+	}
+
+	bool isOpen()  const { GUARD(myMutex); return serial->isOpen(); }
+	
+	void open() { 
+		GUARD(myMutex); 
+		serial->open();
+		if(serial->isOpen())
+			wakeCV.notify_all();
+	}
+	
 	void close() { GUARD(myMutex); serial->close(); std::cout << "closed\n"; }
+
+	void clear() {
+		GUARD(myMutex);
+		serial->flushInput();
+		serial->flushOutput();
+	}
 
     bool wakeFromLongSleep() { return serial->isOpen(); }
     bool goToLongSleep() { return !serial->isOpen(); }
@@ -39,13 +63,27 @@ struct SerialMan : Periodic<SerialMan>
 		      // Populate buffer with first complete BT packet
 		      if (cb.readPacket(lastpacket))
 		      {
+		      	packetId++;
+		      	
+                static auto lastReceived = std::chrono::system_clock::now();
+                auto received = std::chrono::system_clock::now();
+
+		        auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
+		                            (received - lastReceived);
+
+                static double period = 100;
+                period = period*0.9 + 0.1*diff.count();
+                double freq = 1.0/period;
+                std::cout << "Frequency: " << freq << std::endl;
+                lastReceived = received;
+
 		      	// do something more
-		        std::cout << "Received BT packet\n";
+		        // std::cout << "Received BT packet " << packetId << "\n";
 		      }
 		      break;
 
 		    case BUFFER_FAILED_CHECKSUM:
-		    	std::cout << "Bt failed checksum\n";
+		    	// std::cout << "Bt failed checksum\n";
 		    	break;    			    	
 		}
 
@@ -54,20 +92,20 @@ struct SerialMan : Periodic<SerialMan>
     void checkIncomingSerial()
     {
     	size_t nb = serial->available();
-    	std::cout << "checking bytes available " << nb << "\n";
+    	// std::cout << "checking bytes available " << nb << "\n";
 
     	while(nb)
     	{
-			std::cout << "received msg" << std::endl;
-
-        	nb = std::min(nb, (size_t)LINBUFSIZE);
+        	nb = std::min(nb, (size_t)LINBUFSIZE-1);
 	    	size_t nRead = serial->read(linbuf, nb);
 
+	    	linbuf[nRead] = 0;
+
+	    	// std::string received = (char*)linbuf;
+			// std::cout << "received msg: " << received << std::endl;
+
 	    	if(cb.getSpace() < nRead) { std::cout << "Overwriting circ buffer\n"; }
-
     		cb.write(linbuf, nRead);
-
-
     		int result = cb.findPacket();
     		handleParseResult(result);
     		nb = serial->available();
@@ -94,6 +132,14 @@ struct SerialMan : Periodic<SerialMan>
 		outgoing.push_back(m);
 	}
 
+	unsigned long getLastPacketId() const { return packetId; }
+
+	void getLastPacket(uint8_t* dst, uint16_t max)  const
+	{
+		uint16_t nb = std::min(max, (uint16_t)PACKET_SIZE);
+		memcpy(dst, lastpacket, nb);
+	}
+
     void periodicTask() 
     {
     	checkIncomingSerial();
@@ -104,9 +150,12 @@ private:
 	Serial* serial;
 	CircularBuffer<2*LINBUFSIZE> cb;
 	uint8_t linbuf[LINBUFSIZE];
+
+	unsigned long packetId = 0;
+
 	uint8_t lastpacket[PACKET_SIZE];
 	QuickQueue<Msg> outgoing;
-	std::mutex myMutex;
+	mutable std::mutex myMutex;
 };
 
 #endif

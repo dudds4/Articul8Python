@@ -7,12 +7,19 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
+#endif
 
 using namespace std;
 using serial::Serial;
 
 #include <algorithm>
+#include <fstream>
+#include "wrapper.h"
 
 SerialMan* g_serial = nullptr;
 bool keepgoing = true;
@@ -30,26 +37,35 @@ void my_handler(int s)
 	keepgoing = false;
 }
 
+
+
 int main()
 {
+#ifdef _WIN32
+#else
 	struct sigaction sigIntHandler;
 	sigIntHandler.sa_handler = my_handler;
 	sigemptyset(&sigIntHandler.sa_mask);
 	sigIntHandler.sa_flags = 0;
 	sigaction(SIGINT, &sigIntHandler, NULL);
+#endif	
 
-	SerialMan *serial = new SerialMan("/dev/ttyUSB0", 9600);
-	g_serial = serial;
+	ifstream fin("port.txt");
+	std::string portname;
+	fin >> portname;
 
-	auto commThread = new std::thread(&SerialMan::runTask, serial);
+	ser_setup();
+	ser_open(portname.c_str(), portname.length());	
 
-	while(keepgoing)
+	uint8_t m[] = "ab";
+
+	for(int i = 0; i < 5; ++i)
 	{
-		sleep(1);
-		Msg m = {'a', 'b'};
-		serial->sendMsg(m);
+		Sleep(1000);
+		ser_send(m, 2);
 		std::cout << "sent msg" << std::endl;
 	}
+
 
 
 	// try {

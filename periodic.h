@@ -71,7 +71,7 @@ struct Periodic
     }
 
 protected:
-    unsigned int taskPeriod;
+    int taskPeriod = 10;
     std::mutex conditionMutex;
     std::condition_variable wakeCV;
 

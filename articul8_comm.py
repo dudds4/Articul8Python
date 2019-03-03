@@ -52,13 +52,15 @@ def loadCSerial():
 
 	loadSucceeded  = False
 	# is_64bits = sys.maxsize > 2**32
-	# sysOS = platform.system().lower()
+	sysOS = platform.system().lower()
+
 	dir_path = os.path.dirname(os.path.realpath(__file__))
-
 	lpath_base = dir_path + '/build'
-	librarypath =  lpath_base + "/libarticul8.dll"
 
-	# if("win" in sysOS):
+	if(sysOS == 'darwin'):
+		librarypath = lpath_base + "/libarticul8.dylib"
+	else:
+		librarypath = lpath_base + "/libarticul8.dll"
 	# 	if(is_64bits):
 	# 		librarypath = lpath_base + '/win64/libfx_plan_stack.dll'
 	# 	else:

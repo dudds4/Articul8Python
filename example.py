@@ -10,6 +10,7 @@ import socket
 import random
 import string
 import threading
+import signal
 
 STARTING_STREAM = 0
 STREAMING = 1
@@ -21,6 +22,56 @@ fsmCounter = 0
 imuDataAvailable = 0
 latestImuData = ''
 
+threadFlag = True
+threadFlagLock = threading.Lock()
+threadCount = 0
+
+def checkThreadCount():
+    global threadCount
+    global threadFlagLock
+    threadFlagLock.acquire()
+    x = threadCount
+    threadFlagLock.release()
+    return x
+
+def startThread(x):
+    global threadCount
+    global threadFlagLock
+    thread = threading.Thread(target=x)
+    thread.start()
+
+    threadFlagLock.acquire()
+    threadCount+=1
+    threadFlagLock.release()
+
+    return thread    
+
+def threadQuit():
+    global threadCount
+    global threadFlagLock
+
+    threadFlagLock.acquire()
+    threadCount -= 1
+    threadFlagLock.release()
+
+def setThreadFlag(x):
+    global threadFlag
+    global threadFlagLock
+    
+    threadFlagLock.acquire()
+    threadFlag = x
+    threadFlagLock.release()
+
+
+def checkThreadFlag():
+    global threadFlag
+    global threadFlagLock
+    
+    threadFlagLock.acquire()
+    x = threadFlag
+    threadFlagLock.release()
+    return x
+
 def bluetoothWorker():
 
     global imuDataAvailable
@@ -28,7 +79,7 @@ def bluetoothWorker():
 
     MAX_NUM_ERRORS = 4
 
-    while(True):
+    while(checkThreadFlag()):
         msg = ser_getLastPacket()
         if(msg == None):
             time.sleep(0.01)
@@ -53,22 +104,39 @@ def bluetoothWorker():
 
         # print("Received: {}".format(parsed_message))
 
+    print("Bluetooth Worker Quiting...")
+    threadQuit()
+
 port = "COM10"
 def keepAliveWorker():
     # Send periodic messages to continue streaming 
 
-    while(True):
+    while(checkThreadFlag()):
         print("Sending stream message")
         msg = StreamMsg(20)    # Set IMU streaming period (in ms)
         if(not ser_isOpen()):
-        	ser_open(port)
+            ser_open(port)
 
         ser_write(msg.toBytes())
         time.sleep(1)
 
+    print("Keep Alive Worker Quiting...")
+    threadQuit()
+
+def signal_handler(sig, frame):
+        print('You pressed Ctrl+C!')
+        print('Cleaning up')
+        setThreadFlag(False)
+        while(checkThreadCount() > 0):
+            time.sleep(1)
+
+        ser_cleanup();
+        sys.exit(0)
+
 def main():
     loadCSerial()
-
+    signal.signal(signal.SIGINT, signal_handler)
+    
     i = 0
     while(not ser_isOpen() and i < 5):
         ser_open(port)
@@ -78,14 +146,12 @@ def main():
         sys.exit()
 
     print("Starting bt thread")
-    btThread = threading.Thread(target=bluetoothWorker)
-    btThread.start()
+    btThread = startThread(bluetoothWorker)
 
     print('Starting keep alive thread')
-    keepAliveThread = threading.Thread(target=keepAliveWorker)
-    keepAliveThread.start()
+    keepAliveThread = startThread(keepAliveWorker)
 
-    while(True):
+    while(checkThreadCount() > 0):
         time.sleep(1)
 
 if __name__ == '__main__':

@@ -140,6 +140,8 @@ def main():
     i = 0
     while(not ser_isOpen() and i < 5):
         ser_open(port)
+        i += 1
+        time.sleep()
 
     if(not ser_isOpen()):
         print("Couldn't open COM port")

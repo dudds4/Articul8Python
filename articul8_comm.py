@@ -39,7 +39,7 @@ def ser_getLastPacket():
 		p = articul8.ser_getLastPacket()
 		a = struct.unpack('40s', p)[0]
 		result = ''.join([chr(x) for x in a])
-		print(result)
+		# print(result)
 
 	else:
 		result = None
@@ -56,7 +56,7 @@ def loadCSerial():
 	dir_path = os.path.dirname(os.path.realpath(__file__))
 
 	lpath_base = dir_path + '/build'
-	librarypath=  lpath_base + "/libarticul8.dll"
+	librarypath =  lpath_base + "/libarticul8.dll"
 
 	# if("win" in sysOS):
 	# 	if(is_64bits):
@@ -91,6 +91,14 @@ def loadCSerial():
 	articul8.ser_getLastPacket.restype = c_char * 40
 
 	return True
+
+def ser_cleanup():
+	global articul8
+
+	if(ser_isOpen()):
+		ser_close()
+
+	articul8.ser_cleanup()
 
 def list_to_int_arr(l):
 	c_arr = (c_int * len(l))(*l)

@@ -1,6 +1,6 @@
 # packet related defs
 
-PACKET_SIZE = 40
+PACKET_SIZE = 19
 PACKET_OVERHEAD = 2
 SOP = 253
 POS_SOP = 0

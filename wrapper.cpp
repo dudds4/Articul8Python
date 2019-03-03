@@ -2,9 +2,7 @@
 #include "serialman.h"
 #include <thread>
 #include <atomic>
-
-// apparently stdint doesn't work on my machine
-// typedef unsigned char uint8_t;
+#include <iostream>
 
 SerialMan *ser = nullptr;
 std::thread *serThread = nullptr;
@@ -19,16 +17,22 @@ void ser_setup() {
 }
 
 void ser_cleanup() {
+	std::cout << "In C++ Cleanup\n";
 	ser_close();
 	
 	if(ser)
 		ser->quitPeriodicTask();
 
+	if(serThread)
+	{
+		serThread->join();
+		delete serThread;
+	}
+
+	serThread = nullptr;
+
 	if(ser) delete ser;
 	ser = nullptr;
-
-	if(serThread) delete serThread;
-	serThread = nullptr;
 }
 
 void ser_open(const char* portName, int n) {

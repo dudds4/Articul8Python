@@ -11,6 +11,7 @@ import random
 import string
 import threading
 import signal
+import platform
 
 STARTING_STREAM = 0
 STREAMING = 1
@@ -108,6 +109,9 @@ def bluetoothWorker():
     threadQuit()
 
 port = "COM10"
+if (platform.system().lower() == 'darwin'):
+    port = "/dev/cu.Articul8Board1-SerialPo"
+
 def keepAliveWorker():
     # Send periodic messages to continue streaming 
 
@@ -141,7 +145,7 @@ def main():
     while(not ser_isOpen() and i < 5):
         ser_open(port)
         i += 1
-        time.sleep()
+        time.sleep(0.2)
 
     if(not ser_isOpen()):
         print("Couldn't open COM port")

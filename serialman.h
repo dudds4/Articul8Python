@@ -65,17 +65,17 @@ struct SerialMan : Periodic<SerialMan>
 		      {
 		      	packetId++;
 		      	
-                static auto lastReceived = std::chrono::system_clock::now();
-                auto received = std::chrono::system_clock::now();
+          //       static auto lastReceived = std::chrono::system_clock::now();
+          //       auto received = std::chrono::system_clock::now();
 
-		        auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
-		                            (received - lastReceived);
+		        // auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
+		        //                     (received - lastReceived);
 
-                static double period = 100;
-                period = period*0.9 + 0.1*diff.count();
-                double freq = 1.0/period;
-                std::cout << "Frequency: " << freq << std::endl;
-                lastReceived = received;
+          //       static double period = 100;
+          //       period = period*0.9 + 0.1*diff.count();
+          //       double freq = 1.0/period;
+          //       std::cout << "Frequency: " << freq << std::endl;
+          //       lastReceived = received;
 
 		      	// do something more
 		        // std::cout << "Received BT packet " << packetId << "\n";
@@ -104,7 +104,7 @@ struct SerialMan : Periodic<SerialMan>
 	    	// std::string received = (char*)linbuf;
 			// std::cout << "received msg: " << received << std::endl;
 
-	    	if(cb.getSpace() < nRead) { std::cout << "Overwriting circ buffer\n"; }
+	    	// if(cb.getSpace() < nRead) { std::cout << "Overwriting circ buffer\n"; }
     		cb.write(linbuf, nRead);
     		int result = cb.findPacket();
     		handleParseResult(result);

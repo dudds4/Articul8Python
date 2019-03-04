@@ -1,8 +1,10 @@
+
+from msg_defs import *
 from ctypes import *
+
 import os
 import sys
 import platform
-import struct
 
 global articul8
 initialized = False
@@ -35,11 +37,16 @@ def ser_write(msg):
 def ser_getLastPacket():
 	global articul8
 	flag = articul8.ser_newPacketAvailable()
+
+	c_ubyte_p = POINTER(c_ubyte)
+
 	if flag != 0:
 		p = articul8.ser_getLastPacket()
-		a = struct.unpack('40s', p)[0]
-		result = ''.join([chr(x) for x in a])
-		# print(result)
+
+		result = struct.pack('B', cast(p, c_ubyte_p).contents.value)
+		for i in range(1, PACKET_SIZE):
+			byte = cast(p+i, c_ubyte_p).contents.value
+			result += struct.pack('B', byte)
 
 	else:
 		result = None
@@ -90,7 +97,7 @@ def loadCSerial():
 	articul8.ser_open.argtypes = [c_char_p, c_int]
 	articul8.ser_send.argtypes = [c_char_p, c_int]
 	# articul8.ser_getLastPacket.restype = POINTER(c_char)
-	articul8.ser_getLastPacket.restype = c_char * 40
+	articul8.ser_getLastPacket.restype = c_void_p
 
 	return True
 

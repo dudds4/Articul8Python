@@ -111,9 +111,6 @@ struct SerialMan : Periodic<SerialMan>
 	    	// std::string received = (char*)linbuf;
 			// std::cout << "received msg: " << received << std::endl;
 
-<<<<<<< HEAD
-	    	// if(cb.getSpace() < nRead) { std::cout << "Overwriting circ buffer\n"; }
-=======
 	    	// bool clear = false;
 	    	if(cb.getSpace() < nRead) 
 	    	{ 
@@ -121,7 +118,6 @@ struct SerialMan : Periodic<SerialMan>
 	    		// clear = true;
 	    	}
 
->>>>>>> 5e4dc9eebb191a48575662a9dd6de9d3b5211dd7
     		cb.write(linbuf, nRead);
     		int result = cb.findPacket();
     		handleParseResult(result);

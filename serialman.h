@@ -70,12 +70,20 @@ struct SerialMan : Periodic<SerialMan>
 
 		        // auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
 		        //                     (received - lastReceived);
+	            // lastReceived = received;
 
-          //       static double period = 100;
-          //       period = period*0.9 + 0.1*diff.count();
-          //       double freq = 1.0/period;
-          //       std::cout << "Frequency: " << freq << std::endl;
-          //       lastReceived = received;
+             //    static double period = 1000;
+             //    const double alpha = 0.95;
+
+             //    period = period*alpha + (1-alpha)*diff.count();
+             //    double freq = 1000.0 / period;
+                
+             //    static int printCount = 0;
+             //    if(printCount++ > freq)
+             //    {
+	            //     std::cout << "Msrd Stream Freq: " << freq << std::endl;
+             //    	printCount = 0;
+             //    }
 
 		      	// do something more
 		        // std::cout << "Received BT packet " << packetId << "\n";
@@ -99,15 +107,28 @@ struct SerialMan : Periodic<SerialMan>
         	nb = std::min(nb, (size_t)LINBUFSIZE-1);
 	    	size_t nRead = serial->read(linbuf, nb);
 
-	    	linbuf[nRead] = 0;
-
+	    	// linbuf[nRead] = 0;
 	    	// std::string received = (char*)linbuf;
 			// std::cout << "received msg: " << received << std::endl;
 
+<<<<<<< HEAD
 	    	// if(cb.getSpace() < nRead) { std::cout << "Overwriting circ buffer\n"; }
+=======
+	    	// bool clear = false;
+	    	if(cb.getSpace() < nRead) 
+	    	{ 
+	    		std::cout << "Overwriting circ buffer\n";
+	    		// clear = true;
+	    	}
+
+>>>>>>> 5e4dc9eebb191a48575662a9dd6de9d3b5211dd7
     		cb.write(linbuf, nRead);
     		int result = cb.findPacket();
     		handleParseResult(result);
+
+    		// conditionally clear the circ buffer
+    		// if(clear) { cb.read(linbuf, cb.getSize()); }
+
     		nb = serial->available();
     	}    	
     }

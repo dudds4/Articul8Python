@@ -10,7 +10,7 @@
 #include <mutex>
 #include <chrono>
 
-#define LINBUFSIZE 1024
+#define LINBUFSIZE 64
 
 using serial::Serial;
 
@@ -65,25 +65,25 @@ struct SerialMan : Periodic<SerialMan>
 		      {
 		      	packetId++;
 		      	
-          //       static auto lastReceived = std::chrono::system_clock::now();
-          //       auto received = std::chrono::system_clock::now();
+                static auto lastReceived = std::chrono::system_clock::now();
+                auto received = std::chrono::system_clock::now();
 
-		        // auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
-		        //                     (received - lastReceived);
-	            // lastReceived = received;
+		        auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
+		                            (received - lastReceived);
+	            lastReceived = received;
 
-             //    static double period = 1000;
-             //    const double alpha = 0.95;
+                static double period = 1000;
+                const double alpha = 0.95;
 
-             //    period = period*alpha + (1-alpha)*diff.count();
-             //    double freq = 1000.0 / period;
+                period = period*alpha + (1-alpha)*diff.count();
+                double freq = 1000.0 / period;
                 
-             //    static int printCount = 0;
-             //    if(printCount++ > freq)
-             //    {
-	            //     std::cout << "Msrd Stream Freq: " << freq << std::endl;
-             //    	printCount = 0;
-             //    }
+                static int printCount = 0;
+                if(printCount++ > freq*2)
+                {
+	                std::cout << "Msrd Stream Freq: " << freq << std::endl;
+                	printCount = 0;
+                }
 
 		      	// do something more
 		        // std::cout << "Received BT packet " << packetId << "\n";
@@ -114,13 +114,21 @@ struct SerialMan : Periodic<SerialMan>
 	    	// bool clear = false;
 	    	if(cb.getSpace() < nRead) 
 	    	{ 
-	    		std::cout << "Overwriting circ buffer\n";
+	    		static int printC = 0;
+	    		if(printC++ > 50)
+	    		{
+		    		std::cout << "Overwriting circ buffer (50th time)\n";
+		    		printC = 0;
+	    		}
 	    		// clear = true;
 	    	}
 
     		cb.write(linbuf, nRead);
-    		int result = cb.findPacket();
-    		handleParseResult(result);
+    		int result;
+    		// do {
+			 	result = cb.findPacket();
+    			handleParseResult(result);
+    		// } while(result == BUFFER_SUCCESS);
 
     		// conditionally clear the circ buffer
     		// if(clear) { cb.read(linbuf, cb.getSize()); }

@@ -8,6 +8,7 @@ import math
 import socket
 
 tcpConnection = None
+tcpLock = threading.Lock()
 
 exercising = False
 recording = False
@@ -19,6 +20,20 @@ latestImuData = ''
 LRA_WORKER_PERIOD = 0.3
 MIN_REC_MOVEMENT = 5
 VIBRATE_THRESHOLD_DIST = 0.087 # 5 deg in rad
+
+def sendTCP(msg):
+    global tcpConnection, tcpLock
+    tcpLock.acquire()
+
+    try:
+
+        if(tcpConnection is not None):
+            tcpConnection.send(msg)
+
+    except:
+        pass
+
+    tcpLock.release()
 
 # For now if you close the GUI you have to restart python
 def tcpServerWorker():
@@ -33,9 +48,21 @@ def tcpServerWorker():
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
     s.listen(2)
-    tcpConnection, addr = s.accept()
-    tcpConnection.setblocking(1)
-    print('TCP server connected on: {}'.format(addr))
+    s.settimeout(0.2)
+    tcpConnection = None
+
+    while(tcpConnection == None and checkThreadFlag()):
+        try:
+            tcpConnection, addr = s.accept()
+            tcpConnection.settimeout(1)
+            print('TCP server connected on: {}'.format(addr))
+
+        except Exception:
+            pass
+
+    # if(tcpConnection):
+    #     s.settimeout(0)
+    #     tcpConnection.settimeout(0)
 
     try:
         connectionFailed = False
@@ -49,6 +76,8 @@ def tcpServerWorker():
             # Check if any commands are being sent
             try:
                 cmd = tcpConnection.recv(PACKET_SIZE)
+                if(cmd == None):
+                    continue
 
                 if (ord(cmd[POS_SOP]) == SOP and ord(cmd[POS_DATA]) == GUI_CONTROL_MSG):
 
@@ -116,14 +145,19 @@ def bluetoothWorker():
 
             if (tcpConnection is not None):
                 # Only send over 1 in 2 so Processing doesn't get overwhelmed
-                if (sendCounter % 2 == 0):
-                    tcpConnection.send(msg)
-    
+                dividend = 1
+                # if (sendCounter % dividend == 0):
+                sendTCP(msg)
+                    # tcpConnection.send(msg)
+
                 latestImuData = parsed_message
                 sendCounter += 1
-                if sendCounter >= 50:
+                if sendCounter >= 50*dividend:
                     print('Sent {} IMU Packets'.format(sendCounter))
                     sendCounter = 0
+            else:
+                # print("Asdf")
+                pass
 
             recvCounter += 1
             if recvCounter >= 50:
@@ -139,6 +173,8 @@ def bluetoothWorker():
         else:
             # print("Invalid Data Type")
             continue
+
+        time.sleep(0.001)
 
         # print("Received: {}".format(parsed_message))
 
@@ -210,8 +246,9 @@ def lraControlWorker():
         if (newLraMsg != lastLraMsg):
             articulate_board.write(newLraMsg)
             if (tcpConnection is not None):
-                tcpConnection.send(newLraMsg)
-                tcpConnection.send(newLraMsg) # Twice for good measure
+                sendTCP(newLraMsg)
+                # tcpConnection.send(newLraMsg)
+                # tcpConnection.send(newLraMsg) # Twice for good measure
             lastLraMsg = newLraMsg
 
             time.sleep(LRA_WORKER_PERIOD)
@@ -222,8 +259,8 @@ def lraControlWorker():
 def keepAliveWorker():
     # Send periodic messages to continue streaming 
     while(checkThreadFlag()):
-        print("Sending stream message")
-        msg = StreamMsg(15)    # Set IMU streaming period (in ms)
+        # print("Sending stream message")
+        msg = StreamMsg(20)    # Set IMU streaming period (in ms)
         if(not ser_isOpen()):
             ser_open(port)
 

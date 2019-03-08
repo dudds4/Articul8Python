@@ -8,7 +8,6 @@ POS_DATA = 1
 POS_CHECKSUM = (PACKET_SIZE-1)
 
 # message related defines
-
 MSG_OVERHEAD = 1
 
 NONE_MSG = 0
@@ -18,7 +17,10 @@ STATE_CHANGE_MSG = 3
 IMU_DATA_MSG = 4
 LRA_CONTROL_MSG = 5
 GUI_CONTROL_MSG = 6
-NUM_MSG_TYPES = 7
+CALIBRATE_MSG = 7
+OFFSET_REPORT_MSG = 8
+BATTERY_REPORT_MSG = 9
+NUM_MSG_TYPES = 10
 
 # streaming states
 
@@ -32,6 +34,9 @@ STOP_RECORDING = 1
 START_EXERCISE = 2
 STOP_EXERCISE = 3
 PRINT_RECORDING = 4
+CALIBRATE_ACCEL = 5
+CALIBRATE_GYRO = 6
+REPORT_OFFSETS = 7
 
 import struct
 import binascii
@@ -91,6 +96,13 @@ class StreamMsg:
 
         return StreamMsg(period, isOk)
 
+class CalibrateMsg:
+    def __init__(self, cal_type):
+        self.cal_type = int(cal_type)
+
+    def toBytes(self):
+        data = struct.pack('B', CALIBRATE_MSG) + struct.pack('<i', self.cal_type)
+        return wrapDataInPacket(data)
 
 class LRACmdMsg:
     def __init__(self, intensities):
@@ -148,6 +160,39 @@ class StandbyMsg:
     def __str__(self):
         return "STANDBY"
 
+class OffsetMsg:
+    def __init__(self, accelData, gyroData):
+        self.accelData = accelData
+        self.gyroData = gyroData
+
+    @staticmethod
+    def fromBytes(bytes):
+        bytes = bytes[POS_DATA:POS_CHECKSUM]
+
+        if(bytes[0] != OFFSET_REPORT_MSG):
+            return None
+
+        accelData = []
+        for i in range(3):
+            val = struct.unpack('h', bytes[1+2*i:3+2*i])
+            accelData.append(val[0])
+
+        gyroData = []
+        for i in range(3):
+            val = struct.unpack('h', bytes[7+2*i:9+2*i])
+            gyroData.append(val[0])
+
+        return OffsetMsg(accelData, gyroData)
+
+    # To request a report, send empty offset report message to the board
+    @staticmethod
+    def toBytes():
+        data = struct.pack('B', OFFSET_REPORT_MSG)
+        return wrapDataInPacket(data)
+
+    def __str__(self):
+        return "IMU Offset Update: Accel {}, Gyro {}".format(self.accelData, self.gyroData)
+
 class IMUDataMsg:
     def __init__(self, quat):
         self.quat = quat
@@ -156,7 +201,7 @@ class IMUDataMsg:
     def fromBytes(bytes):
         bytes = bytes[POS_DATA:POS_CHECKSUM]
 
-        if(bytes[0] != chr(IMU_DATA_MSG)):
+        if(bytes[0] != IMU_DATA_MSG):
             return None
 
         quat = []

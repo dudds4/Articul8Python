@@ -11,7 +11,7 @@ import platform
 
 port = "COM10"
 if (platform.system().lower() == 'darwin'):
-    port = "/dev/cu.Articul8Board1-SerialPo"
+    port = "/dev/cu.Articul8Board3-SerialPo"
 
 def signal_handler(sig, frame):
         print('You pressed Ctrl+C!')

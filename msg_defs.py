@@ -174,12 +174,12 @@ class OffsetMsg:
 
         accelData = []
         for i in range(3):
-            val = struct.unpack('f', bytes[1+2*i:3+2*i])
+            val = struct.unpack('h', bytes[1+2*i:3+2*i])
             accelData.append(val[0])
 
         gyroData = []
         for i in range(3):
-            val = struct.unpack('f', bytes[7+2*i:9+2*i])
+            val = struct.unpack('h', bytes[7+2*i:9+2*i])
             gyroData.append(val[0])
 
         return OffsetMsg(accelData, gyroData)

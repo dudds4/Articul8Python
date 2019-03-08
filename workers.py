@@ -36,8 +36,6 @@ def sendTCP(msg):
 
     tcpLock.release()
 
-def sendCalibrateMsg():
-
 # For now if you close the GUI you have to restart python
 def tcpServerWorker():
     global tcpConnection, exercising, recording, recordedMovement
@@ -107,7 +105,7 @@ def tcpServerWorker():
 
                         ser_write(OffsetMsg.toBytes())
 
-                    elif (cmd[POS_DATA+1] == CALIBRATE_ACCEL || cmd[POS_DATA+1] == CALIBRATE_GYRO):
+                    elif (cmd[POS_DATA+1] == CALIBRATE_ACCEL or cmd[POS_DATA+1] == CALIBRATE_GYRO):
                         msg = CalibrateMsg(cmd[POS_DATA+1])
 
                         if(not ser_isOpen()):

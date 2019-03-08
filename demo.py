@@ -9,7 +9,7 @@ import string
 import signal
 import platform
 
-port = "COM10"
+port = "COM7"
 if (platform.system().lower() == 'darwin'):
     port = "/dev/cu.Articul8Board3-SerialPo"
 
@@ -24,6 +24,24 @@ def signal_handler(sig, frame):
         ser_cleanup();
         sys.exit(0)
 
+def exampleWriteLog():
+    ser_startLogging()
+
+    for i in range(0, 100):
+        m = StreamMsg(20)
+        ser_write(m.toBytes())
+        time.sleep(0.02)
+
+    ser_stopLogging()
+
+def exampleReadLog():
+    ser_openLog("articul8Log.Mar_08_17.15.58_201.csv")
+    packet = 1
+    while(packet != None):
+        packet = ser_getLogPacket()
+        if(packet != None):
+            print(packet)                
+
 def main():
     loadCSerial()
     signal.signal(signal.SIGINT, signal_handler)
@@ -37,7 +55,7 @@ def main():
     if(not ser_isOpen()):
         print("Couldn't open serial port")
         sys.exit()
-
+        
     print("Starting bt thread")
     btThread = startThread(bluetoothWorker)
 

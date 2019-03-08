@@ -144,7 +144,7 @@ std::string generateFileName()
 	auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
 	std::string cNow = std::ctime(&now);
-	std::string filetime = cNow.substr(4,4+15);
+	std::string filetime = cNow.substr(4,4+11);
 
 	if(filetime[4] == ' ')
 		filetime[4] = '0';
@@ -152,6 +152,6 @@ std::string generateFileName()
 	std::replace(filetime.begin(), filetime.end(), ' ', '_');
 	std::replace(filetime.begin(), filetime.end(), ':', '.');
 
-	ss << "articul8Log." << filetime << ".csv";
+	ss << "articul8Log." << filetime << ".log";
 	return ss.str();
 }

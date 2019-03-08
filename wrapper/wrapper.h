@@ -21,6 +21,10 @@ uint8_t* ser_getLastPacket();
 void ser_startLogging();
 void ser_stopLogging();
 
+void ser_openLog(const char* filename);
+uint8_t ser_logPacketAvailable();
+uint8_t* ser_getLogPacket();
+
 }
 
 #endif

@@ -1,11 +1,13 @@
 #include "wrapper.h"
 #include "serialman.h"
+#include "logger.h"
 #include <thread>
 #include <atomic>
 #include <iostream>
 
 SerialMan *ser = nullptr;
 std::thread *serThread = nullptr;
+LogReader logReader;
 
 #define BAUD_RATE 9600
 
@@ -13,7 +15,8 @@ void ser_setup() {
 	if(!ser)
 		ser = new SerialMan();
 
-	serThread = new std::thread(&SerialMan::runTask, ser);
+	if(!serThread)
+		serThread = new std::thread(&SerialMan::runTask, ser);
 }
 
 void ser_cleanup() {
@@ -97,6 +100,7 @@ uint8_t ser_newPacketAvailable()
 }
 
 uint8_t packet[PACKET_SIZE];
+
 uint8_t* ser_getLastPacket()
 {
 	unsigned long id = ser->getLastPacketId();
@@ -113,4 +117,21 @@ void ser_startLogging()
 void ser_stopLogging()
 {
 	ser->setLogging(false);
+}
+
+void ser_openLog(const char* filename)
+{
+	logReader.openLog(filename);
+
+}
+
+uint8_t ser_logPacketAvailable()
+{
+	return logReader.isOpen() && !logReader.isDone();
+}
+
+uint8_t* ser_getLogPacket()
+{
+	logReader.readPacket(packet, PACKET_SIZE);
+	return packet;
 }

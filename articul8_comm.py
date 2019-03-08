@@ -53,6 +53,37 @@ def ser_getLastPacket():
 
 	return result
 
+def ser_startLogging():
+	global articul8
+	articul8.ser_startLogging()
+
+def ser_stopLogging():
+	global articul8
+	articul8.ser_stopLogging()
+
+def ser_openLog(filename):
+	global articul8
+	articul8.ser_openLog(filename.encode('utf-8'))
+
+def ser_getLogPacket():
+	global articul8
+	flag = articul8.ser_logPacketAvailable()
+
+	c_ubyte_p = POINTER(c_ubyte)
+
+	if flag != 0:
+		p = articul8.ser_getLogPacket()
+
+		result = struct.pack('B', cast(p, c_ubyte_p).contents.value)
+		for i in range(1, PACKET_SIZE):
+			byte = cast(p+i, c_ubyte_p).contents.value
+			result += struct.pack('B', byte)
+
+	else:
+		result = None
+
+	return result	
+
 # Loads the library from the c lib
 def loadCSerial():
 	global articul8
@@ -96,8 +127,8 @@ def loadCSerial():
 	# set arg types
 	articul8.ser_open.argtypes = [c_char_p, c_int]
 	articul8.ser_send.argtypes = [c_char_p, c_int]
-	# articul8.ser_getLastPacket.restype = POINTER(c_char)
 	articul8.ser_getLastPacket.restype = c_void_p
+	articul8.ser_getLogPacket.restype = c_void_p
 
 	return True
 

@@ -1,6 +1,7 @@
 from articul8_comm import *
 from msg_defs import *
 from threadman import *
+from quaternion import *
 
 import sys
 import time
@@ -17,7 +18,7 @@ recordedMovement = []
 imuDataAvailable = 0
 latestImuData = ''
 
-LRA_WORKER_PERIOD = 0.3
+LRA_WORKER_PERIOD = 0.33
 MIN_REC_MOVEMENT = 5
 VIBRATE_THRESHOLD_DIST = 0.087 # 5 deg in rad
 
@@ -34,6 +35,8 @@ def sendTCP(msg):
         pass
 
     tcpLock.release()
+
+def sendCalibrateMsg():
 
 # For now if you close the GUI you have to restart python
 def tcpServerWorker():
@@ -60,56 +63,62 @@ def tcpServerWorker():
         except Exception:
             pass
 
-    # if(tcpConnection):
-    #     s.settimeout(0)
-    #     tcpConnection.settimeout(0)
-
     try:
         connectionFailed = False
         sendCounter = 0
 
         while (not(connectionFailed) and checkThreadFlag()):
-            # Send an empty string - does nothing unless connection is broken, in which case
-            # it throws an exception and the connection is set to None
-            # tcpConnection.send('')
-
             # Check if any commands are being sent
             try:
                 cmd = tcpConnection.recv(PACKET_SIZE)
-                if(cmd == None):
+                if(cmd is None):
                     continue
 
-                if (ord(cmd[POS_SOP]) == SOP and ord(cmd[POS_DATA]) == GUI_CONTROL_MSG):
+                if (cmd[POS_SOP] == SOP and cmd[POS_DATA] == GUI_CONTROL_MSG):
 
-                    if (cmd[POS_DATA+1] == chr(START_RECORDING)):
+                    if (cmd[POS_DATA+1] == START_RECORDING):
                         if not(recording):
                             recording = True
                             recordedMovement = []
                             print("Starting Recording!")
 
-                    elif (cmd[POS_DATA+1] == chr(STOP_RECORDING)):
+                    elif (cmd[POS_DATA+1] == STOP_RECORDING):
                         if (recording):
                             recording = False
                             print("Ending Recording!")
                             print("Recording size: {}".format(len(recordedMovement)))
 
-                    elif (cmd[POS_DATA+1] == chr(START_EXERCISE)):
+                    elif (cmd[POS_DATA+1] == START_EXERCISE):
                         if not(exercising):
                             exercising = True
                             print("Starting Exercise!")
 
-                    elif (cmd[POS_DATA+1] == chr(STOP_EXERCISE)):
+                    elif (cmd[POS_DATA+1] == STOP_EXERCISE):
                         if (exercising):
                             exercising = False
                             print("Ending Exercise!")
 
-                    elif (cmd[POS_DATA+1] == chr(PRINT_RECORDING)):
+                    elif (cmd[POS_DATA+1] == PRINT_RECORDING):
                         print(recordedMovement)
+
+                    elif (cmd[POS_DATA+1] == REPORT_OFFSETS):
+                        if(not ser_isOpen()):
+                            ser_open(port)
+
+                        ser_write(OffsetMsg.toBytes())
+
+                    elif (cmd[POS_DATA+1] == CALIBRATE_ACCEL || cmd[POS_DATA+1] == CALIBRATE_GYRO):
+                        msg = CalibrateMsg(cmd[POS_DATA+1])
+
+                        if(not ser_isOpen()):
+                            ser_open(port)
+
+                        ser_write(msg.toBytes())
 
                     else:
                         print("Received invalid command: {}".format(cmd))
                         connectionFailed = True
-            except Exception:
+            except Exception as e:
                 pass
     finally:
         if tcpConnection is not None:
@@ -144,19 +153,14 @@ def bluetoothWorker():
                 recordedMovement.append(parsed_message)
 
             if (tcpConnection is not None):
-                # Only send over 1 in 2 so Processing doesn't get overwhelmed
-                dividend = 1
-                # if (sendCounter % dividend == 0):
                 sendTCP(msg)
-                    # tcpConnection.send(msg)
 
                 latestImuData = parsed_message
                 sendCounter += 1
-                if sendCounter >= 50*dividend:
+                if sendCounter >= 50:
                     print('Sent {} IMU Packets'.format(sendCounter))
                     sendCounter = 0
             else:
-                # print("Asdf")
                 pass
 
             recvCounter += 1
@@ -170,6 +174,10 @@ def bluetoothWorker():
         elif (msg[POS_DATA] == STANDBY_MSG):
             parsed_message = StandbyMsg.fromBytes(msg)
 
+        elif (msg[POS_DATA] == OFFSET_REPORT_MSG):
+            parsed_message = OffsetMsg.fromBytes(msg)
+            print(parsed_message)
+
         else:
             # print("Invalid Data Type")
             continue
@@ -180,6 +188,37 @@ def bluetoothWorker():
 
     print("Bluetooth Worker Quiting...")
     threadQuit()
+
+def oldLraControlWorker():
+    global tcpConnection, latestImuData
+
+    onIntensities = [int(127)]*8
+    onMsgBytes = LRACmdMsg(onIntensities).toBytes()
+
+    offIntensities = [int(0)]*8
+    offMsgBytes = LRACmdMsg(offIntensities).toBytes()
+
+    lastLraMsg = offMsgBytes
+
+    i = 0
+    while(checkThreadFlag()):
+        intensities = [int(127)]*8
+        intensities[i] = 127
+        newLraMsg = LRACmdMsg(intensities).toBytes()
+
+        ser_write(newLraMsg)
+        if (tcpConnection is not None):
+            sendTCP(newLraMsg)
+
+        time.sleep(LRA_WORKER_PERIOD)
+        time.sleep(LRA_WORKER_PERIOD)
+        i += 1
+        if (i >= 8):
+            i = 0
+
+    print("LRA Command Worker Quiting...")
+    threadQuit()
+
 
 def lraControlWorker():
     global tcpConnection, latestImuData
@@ -195,6 +234,9 @@ def lraControlWorker():
     while(checkThreadFlag()):
 
         newLraMsg = offMsgBytes
+
+        # if (exercising and not(recording) and latestImuData is None):
+        #     print('WTF IMUDATA')
 
         if (exercising and not(recording) and latestImuData != None
             and len(recordedMovement) >= MIN_REC_MOVEMENT):
@@ -217,7 +259,7 @@ def lraControlWorker():
                 if (dist >= VIBRATE_THRESHOLD_DIST and dist < minDist):
                     minDist = dist
                     z_dist = mvGrav[2] - imuGrav[2]
-                    y_dist = mvGrav[1] - imuGrav[1]
+                    y_dist = -mvGrav[1] + imuGrav[1]
 
                     mag = math.sqrt(y_dist**2 + z_dist**2)
                     angle = math.atan2(y_dist, z_dist)
@@ -244,7 +286,7 @@ def lraControlWorker():
                     newLraMsg = LRACmdMsg(intensities).toBytes()
 
         if (newLraMsg != lastLraMsg):
-            articulate_board.write(newLraMsg)
+            ser_write(newLraMsg)
             if (tcpConnection is not None):
                 sendTCP(newLraMsg)
                 # tcpConnection.send(newLraMsg)

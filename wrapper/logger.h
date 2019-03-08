@@ -6,6 +6,8 @@
 
 struct LogWriter
 {
+	~LogWriter();
+
 	void writePacket(const void* packet, unsigned nb);
 	void openLog();
 	void closeLog();
@@ -19,6 +21,8 @@ private:
 
 struct LogReader
 {
+	~LogReader();
+	
 	void readPacket(void* data, unsigned nb);
 	bool isOpen();
 	bool isDone();

@@ -18,6 +18,8 @@ uint8_t ser_send(const uint8_t* msg, unsigned n);
 uint8_t ser_newPacketAvailable();
 uint8_t* ser_getLastPacket();
 
+void ser_startLogging();
+void ser_stopLogging();
 
 }
 

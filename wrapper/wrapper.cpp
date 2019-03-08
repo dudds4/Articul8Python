@@ -104,3 +104,13 @@ uint8_t* ser_getLastPacket()
 	lastId = id;
 	return packet;
 }
+
+void ser_startLogging()
+{
+	ser->setLogging(true);
+}
+
+void ser_stopLogging()
+{
+	ser->setLogging(false);
+}

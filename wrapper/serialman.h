@@ -1,6 +1,7 @@
 #ifndef SERIALMAN_H
 #define SERIALMAN_H
 
+#include "logger.h"
 #include "quickqueue.h"
 #include "serial/serial.h"
 #include <iostream>
@@ -34,6 +35,16 @@ struct SerialMan : Periodic<SerialMan>
 	{
 		serial->setPort(port);
 		serial->setBaudrate(baud);
+	}
+
+	void setLogging(bool log) {
+		if(logging == log) return;
+		logging = log;
+		
+		if(logging)
+			logWrite.openLog();
+		else
+			logWrite.closeLog();
 	}
 
 	bool isOpen()  const { GUARD(myMutex); return serial->isOpen(); }
@@ -85,6 +96,8 @@ struct SerialMan : Periodic<SerialMan>
                 	printCount = 0;
                 }
 
+                if(logging)
+                	logWrite.writePacket(lastpacket, PACKET_SIZE);
 		      	// do something more
 		        // std::cout << "Received BT packet " << packetId << "\n";
 		      }
@@ -181,6 +194,8 @@ private:
 	uint8_t lastpacket[PACKET_SIZE];
 	QuickQueue<Msg> outgoing;
 	mutable std::mutex myMutex;
+	bool logging = false;
+	LogWriter logWrite;
 };
 
 #endif

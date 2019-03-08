@@ -11,6 +11,19 @@ std::string generateFileName();
 
 #define ASSERT_OPEN(f) do { if(!f.is_open()) return; } while(0)
 
+
+LogWriter::~LogWriter()
+{
+	if(fout.is_open())
+		fout.close();
+}
+
+LogReader::~LogReader()
+{
+	if(fin.is_open())
+		fin.close();
+}
+
 void LogWriter::writePacket(const void* p, unsigned nb)
 {
 	const char* packet = static_cast<const char*>(p);

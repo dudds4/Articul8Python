@@ -7,7 +7,7 @@
 #include "msg_defs.h"
 #include <iostream>
 
-std::string generateFileName();
+std::string generateFileName(std::string tag="");
 
 #define ASSERT_OPEN(f) do { if(!f.is_open()) return; } while(0)
 
@@ -56,11 +56,11 @@ void LogWriter::writeHeader()
 	fout.write((char*)&packetSize, sizeof(unsigned));
 }
 
-void LogWriter::openLog()
+void LogWriter::openLog(std::string tag)
 {
 	closeLog();
-	std::string fname = generateFileName();
-	fout.open(generateFileName(), std::ios::binary);
+	std::string fname = generateFileName(tag);
+	fout.open(fname, std::ios::binary);
 	if(fout.is_open())
 	{
 		m_filename = fname;
@@ -137,7 +137,7 @@ void LogReader::closeLog()
 	packetSize = 0;
 }
 
-std::string generateFileName()
+std::string generateFileName(std::string tag)
 {
 	std::stringstream ss;
 
@@ -152,6 +152,10 @@ std::string generateFileName()
 	std::replace(filetime.begin(), filetime.end(), ' ', '_');
 	std::replace(filetime.begin(), filetime.end(), ':', '.');
 
-	ss << "articul8Log." << filetime << ".log";
+	ss << "articul8Log." << filetime;
+	if(tag.length())
+		ss  <<  "." << tag;
+
+	ss << ".log";
 	return ss.str();
 }

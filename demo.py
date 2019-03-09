@@ -63,7 +63,6 @@ def main():
         sys.exit()
         
     ser_startLogging(0)    
-    time.sleep(2)
     ser_startLogging(1)
 
     print("Starting bt thread")
@@ -72,11 +71,11 @@ def main():
     print('Starting keep alive thread')
     keepAliveThread = startThread(keepAliveWorker)
 
-    # print('Starting TCP server thread')
-    # tcpServerThread = startThread(tcpServerWorker)
+    print('Starting TCP server thread')
+    tcpServerThread = startThread(tcpServerWorker)
 
-    # print('Starting LRA control thread')
-    # lraControlThread = startThread(lraControlWorker)
+    print('Starting LRA control thread')
+    lraControlThread = startThread(lraControlWorker)
 
     while(checkThreadCount() > 0):
         time.sleep(1)

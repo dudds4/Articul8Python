@@ -9,7 +9,7 @@ struct LogWriter
 	~LogWriter();
 
 	void writePacket(const void* packet, unsigned nb);
-	void openLog();
+	void openLog(std::string tag="");
 	void closeLog();
 	std::string getFilename();
 
@@ -22,7 +22,7 @@ private:
 struct LogReader
 {
 	~LogReader();
-	
+
 	void readPacket(void* data, unsigned nb);
 	bool isOpen();
 	bool isDone();

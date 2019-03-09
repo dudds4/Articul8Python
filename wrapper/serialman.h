@@ -42,7 +42,17 @@ struct SerialMan : Periodic<SerialMan>
 		logging = log;
 		
 		if(logging)
-			logWrite.openLog();
+		{
+			std::string portName = serial->getPort();
+			std::string tag;
+			const int MAX_L = 10;
+			if(portName.length() < MAX_L)
+				tag = portName;
+			else
+				tag = portName.substr(portName.length()-MAX_L, portName.length());
+
+			logWrite.openLog(tag);
+		}
 		else
 			logWrite.closeLog();
 	}

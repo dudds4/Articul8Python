@@ -9,7 +9,7 @@ import platform
 global articul8
 initialized = False
 
-ports = ["COM7", "COM10"]
+ports = ["COM6", "COM9"]
 if (platform.system().lower() == 'darwin'):
     port = "/dev/cu.Articul8Board3-SerialPo"
 

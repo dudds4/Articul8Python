@@ -9,39 +9,47 @@ import platform
 global articul8
 initialized = False
 
+ports = ["COM7", "COM10"]
+if (platform.system().lower() == 'darwin'):
+    port = "/dev/cu.Articul8Board3-SerialPo"
+
 # Opens the given serial port at the given index and looks for devices
-def ser_open(port):
+def ser_open(port, portId=0):
 	global articul8
+	if(portId == None):
+		portId = 0
+
 	try:
-		articul8.ser_open( port.encode('utf-8'), len(port) )
+		articul8.ser_open( port.encode('utf-8'), len(port), portId)
 	except Exception as ex:
 		print(ex)
 
 # Returns a boolean that indicates whether the port is open
-def ser_isOpen():
+def ser_isOpen(portId=0):
 	global articul8
-	if(articul8.ser_isOpen() == 0):
+
+	if(articul8.ser_isOpen(portId) == 0):
 		return False
 	else:
 		return True
 
-def ser_close():
+def ser_close(portId=0):
 	global articul8
-	articul8.ser_close()
+	articul8.ser_close(portId)
 
-def ser_write(msg):
+def ser_write(msg, portId=0):
 	global articul8	
 	# articul8.ser_send(msg.encode('utf-8'), len(msg))
-	articul8.ser_send(msg, len(msg))
+	articul8.ser_send(msg, len(msg), portId)
 
-def ser_getLastPacket():
+def ser_getLastPacket(portId=0):
 	global articul8
-	flag = articul8.ser_newPacketAvailable()
+	flag = articul8.ser_newPacketAvailable(portId)
 
 	c_ubyte_p = POINTER(c_ubyte)
 
 	if flag != 0:
-		p = articul8.ser_getLastPacket()
+		p = articul8.ser_getLastPacket(portId)
 
 		result = struct.pack('B', cast(p, c_ubyte_p).contents.value)
 		for i in range(1, PACKET_SIZE):
@@ -53,26 +61,26 @@ def ser_getLastPacket():
 
 	return result
 
-def ser_startLogging():
+def ser_startLogging(portId=0):
 	global articul8
-	articul8.ser_startLogging()
+	articul8.ser_startLogging(portId)
 
-def ser_stopLogging():
+def ser_stopLogging(portId=0):
 	global articul8
-	articul8.ser_stopLogging()
+	articul8.ser_stopLogging(portId)
 
-def ser_openLog(filename):
+def ser_openLog(filename, portId=0):
 	global articul8
-	articul8.ser_openLog(filename.encode('utf-8'))
+	articul8.ser_openLog(filename.encode('utf-8'), portId)
 
-def ser_getLogPacket():
+def ser_getLogPacket(portId=0):
 	global articul8
-	flag = articul8.ser_logPacketAvailable()
+	flag = articul8.ser_logPacketAvailable(portId)
 
 	c_ubyte_p = POINTER(c_ubyte)
 
 	if flag != 0:
-		p = articul8.ser_getLogPacket()
+		p = articul8.ser_getLogPacket(portId)
 
 		result = struct.pack('B', cast(p, c_ubyte_p).contents.value)
 		for i in range(1, PACKET_SIZE):
@@ -125,8 +133,8 @@ def loadCSerial():
 	articul8.ser_setup()
 
 	# set arg types
-	articul8.ser_open.argtypes = [c_char_p, c_int]
-	articul8.ser_send.argtypes = [c_char_p, c_int]
+	articul8.ser_open.argtypes = [c_char_p, c_int, c_uint]
+	articul8.ser_send.argtypes = [c_char_p, c_int, c_uint]
 	articul8.ser_getLastPacket.restype = c_void_p
 	articul8.ser_getLogPacket.restype = c_void_p
 
@@ -135,8 +143,9 @@ def loadCSerial():
 def ser_cleanup():
 	global articul8
 
-	if(ser_isOpen()):
-		ser_close()
+	for portId in range(0,4):
+		if(ser_isOpen(portId)):
+			ser_close(portId)
 
 	articul8.ser_cleanup()
 

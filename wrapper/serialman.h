@@ -76,20 +76,17 @@ struct SerialMan : Periodic<SerialMan>
 		      {
 		      	packetId++;
 		      	
-                static auto lastReceived = std::chrono::system_clock::now();
                 auto received = std::chrono::system_clock::now();
-
 		        auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
 		                            (received - lastReceived);
+
 	            lastReceived = received;
 
-                static double period = 1000;
                 const double alpha = 0.95;
 
                 period = period*alpha + (1-alpha)*diff.count();
                 double freq = 1000.0 / period;
                 
-                static int printCount = 0;
                 if(printCount++ > freq*2)
                 {
 	                std::cout << "Msrd Stream Freq: " << freq << std::endl;
@@ -196,6 +193,11 @@ private:
 	mutable std::mutex myMutex;
 	bool logging = false;
 	LogWriter logWrite;
+
+	double period = 1000;
+	int printCount = 0;
+
+	std::chrono::time_point<std::chrono::system_clock> lastReceived = std::chrono::system_clock::now();                
 };
 
 #endif

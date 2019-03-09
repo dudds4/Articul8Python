@@ -9,9 +9,6 @@ import string
 import signal
 import platform
 
-port = "COM7"
-if (platform.system().lower() == 'darwin'):
-    port = "/dev/cu.Articul8Board3-SerialPo"
 
 def signal_handler(sig, frame):
         print('You pressed Ctrl+C!')
@@ -46,27 +43,40 @@ def main():
     loadCSerial()
     signal.signal(signal.SIGINT, signal_handler)
     
-    i = 0
-    while(not ser_isOpen() and i < 5):
-        ser_open(port)
-        i += 1
-        time.sleep(0.2)
 
-    if(not ser_isOpen()):
-        print("Couldn't open serial port")
+    tries = 0
+    for i, port in enumerate(ports):
+        print("Opening port {}".format(port))
+        while(not ser_isOpen(i) and tries < 5):
+            ser_open(port, i)
+            time.sleep(0.2)
+            tries += 1
+
+    failed = False
+    for i, port in enumerate(ports):
+        if(not ser_isOpen(i)):
+            failed = True
+
+    if(failed):
+        print("Coundn't open all ports...")
+        ser_cleanup()
         sys.exit()
         
+    ser_startLogging(0)    
+    time.sleep(2)
+    ser_startLogging(1)
+
     print("Starting bt thread")
     btThread = startThread(bluetoothWorker)
 
     print('Starting keep alive thread')
     keepAliveThread = startThread(keepAliveWorker)
 
-    print('Starting TCP server thread')
-    tcpServerThread = startThread(tcpServerWorker)
+    # print('Starting TCP server thread')
+    # tcpServerThread = startThread(tcpServerWorker)
 
-    print('Starting LRA control thread')
-    lraControlThread = startThread(lraControlWorker)
+    # print('Starting LRA control thread')
+    # lraControlThread = startThread(lraControlWorker)
 
     while(checkThreadCount() > 0):
         time.sleep(1)

@@ -33,10 +33,11 @@ void LogWriter::writePacket(const void* p, unsigned nb)
 
 	fout.write(packet, nb);
 
-	if(padding)
+	if(padding > 0)
 	{
-		char zeros[padding] = {0};
-		fout.write(zeros, padding);		
+		for (int i = 0; i < padding; i++) {
+			fout.write(0, 1);	
+		}
 	}
 }
 

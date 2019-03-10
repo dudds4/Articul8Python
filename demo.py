@@ -10,6 +10,7 @@ import signal
 import platform
 import os
 import glob
+import matplotlib.pyplot as plt
 
 def signal_handler(sig, frame):
         print('You pressed Ctrl+C!')
@@ -39,17 +40,67 @@ def printImuData(imuData, tag):
 
     print(tag + ss)
 
-def exampleReadLog(nFiles):
+def plotLog(path="."):
+    if not(os.path.isdir(path)):
+        print('{} is not a valid path'.format(path))
+        return
 
     # open the latest two log files
-    files = glob.glob("*.log")
+    nFiles = 2
+    files = glob.glob(os.path.relpath(path)+"/*.log")
     files.sort(key=os.path.getmtime)
     files = files[::-1]
     files = files[0:nFiles]
     print(files)
 
-    for i in range(0, nFiles):
+    imuMsgLists = []
+
+    for i in range(nFiles):
         ser_openLog(files[i], i)
+        imuMsgLists.append([])
+
+    failed = False
+    while(not failed):
+        for i in range(0, nFiles):
+            packet = ser_getLogPacket(i)
+            failed = failed or packet == None
+
+            if (packet is not None and packet[POS_DATA] == IMU_DATA_MSG):
+                parsed_message = IMUDataMsg.fromBytes(packet)
+                imuMsgLists[i].append(parsed_message)
+
+    line_types = ['-', '--', '-.', ':', 'o', 's']
+    for i in range(nFiles):
+        j = range(len(imuMsgLists[i]))
+        w = [msg.quat[0] for msg in imuMsgLists[i]]
+        x = [msg.quat[1] for msg in imuMsgLists[i]]
+        y = [msg.quat[2] for msg in imuMsgLists[i]]
+        z = [msg.quat[3] for msg in imuMsgLists[i]]
+        plt.plot(j, w, 'r'+line_types[i])
+        plt.plot(j, x, 'b'+line_types[i])
+        plt.plot(j, y, 'g'+line_types[i])
+        plt.plot(j, z, 'k'+line_types[i])
+
+    plt.legend(['w','x','y','z'])
+    plt.show()
+
+
+
+def exampleReadLog(nFiles):
+
+    # open the latest two log files
+    files = glob.glob("*.log")
+
+    files.sort(key=os.path.getmtime)
+    files = files[::-1]
+    files = files[0:nFiles]
+    print(files)
+
+    imuMsgLists = []
+
+    for i in range(nFiles):
+        ser_openLog(files[i], i)
+        imuMsgLists.append([])
 
     failed = False
     while(not failed):
@@ -57,18 +108,25 @@ def exampleReadLog(nFiles):
             packet = ser_getLogPacket(i)
             failed = failed or packet == None
             if(not failed):
-                # print("device {}: {}".format(i, packet))
                 imuData = IMUDataMsg.fromBytes(packet)
                 print("device {}. ".format(i) + str(imuData))
 
+            if (packet is not None and packet[POS_DATA] == IMU_DATA_MSG):
+                parsed_message = IMUDataMsg.fromBytes(packet)
+                imuMsgLists[i].append(parsed_message)
+
 def main():
+
     loadCSerial()
     signal.signal(signal.SIGINT, signal_handler)
 
-    # uncomment to see example of log reading...    
-    # time.sleep(0.5)
-    # exampleReadLog(1)
-    # return
+    if (len(sys.argv) > 1):
+        time.sleep(0.5)
+        plotLog(sys.argv[1])
+        return
+
+    # exampleReadLog(2)
+    return
 
     tries = 0
     for i, port in enumerate(ports):

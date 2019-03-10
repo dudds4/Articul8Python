@@ -37,6 +37,7 @@ PRINT_RECORDING = 4
 CALIBRATE_ACCEL = 5
 CALIBRATE_GYRO = 6
 REPORT_OFFSETS = 7
+PRINT_BATTERY = 8
 
 import struct
 import binascii
@@ -225,4 +226,26 @@ class IMUDataMsg:
 
     def __str__(self):
         return "quat: {}, xAccel: {}, time: {}".format(str(self.quat), self.xAccel, self.time)
-        # return "IMU Data: {}".format(str(self.quat))
+
+class BatteryReportMsg:
+    def __init__(self, battLevel):
+        self.battLevel = battLevel
+
+    @staticmethod
+    def fromBytes(bytes):
+        bytes = bytes[POS_DATA:POS_CHECKSUM]
+
+        if(bytes[0] != BATTERY_REPORT_MSG):
+            return None
+
+        battLevel = struct.unpack('h', bytes[1:3])[0]
+
+        return BatteryReportMsg(battLevel)
+
+    @staticmethod
+    def toBytes():
+        data = struct.pack('B', BATTERY_REPORT_MSG)
+        return wrapDataInPacket(data)
+
+    def __str__(self):
+        return "BATTERY: {} mV".format(self.battLevel)

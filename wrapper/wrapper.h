@@ -25,6 +25,8 @@ void ser_openLog(const char* filename, unsigned port);
 uint8_t ser_logPacketAvailable(unsigned port);
 uint8_t* ser_getLogPacket(unsigned port);
 
+double ser_getFrequency(unsigned port);
+
 }
 
 #endif

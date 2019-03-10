@@ -180,3 +180,11 @@ uint8_t* ser_getLogPacket(unsigned port)
 	logReader[port].readPacket(packet, PACKET_SIZE);
 	return packet;
 }
+
+double ser_getFrequency(unsigned port)
+{
+	if(port >= NUM_PORTS) 
+			return -1;
+
+	return ser[port]->getFrequency();
+}

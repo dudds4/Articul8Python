@@ -1,6 +1,6 @@
 # packet related defs
 
-PACKET_SIZE = 19
+PACKET_SIZE = 24
 PACKET_OVERHEAD = 2
 SOP = 253
 POS_SOP = 0
@@ -194,8 +194,10 @@ class OffsetMsg:
         return "IMU Offset Update: Accel {}, Gyro {}".format(self.accelData, self.gyroData)
 
 class IMUDataMsg:
-    def __init__(self, quat):
+    def __init__(self, quat, accel, timestamp):
         self.quat = quat
+        self.xAccel = accel
+        self.time = timestamp
 
     @staticmethod
     def fromBytes(bytes):
@@ -204,12 +206,23 @@ class IMUDataMsg:
         if(bytes[0] != IMU_DATA_MSG):
             return None
 
-        quat = []
-        for i in range(4):
-            val = struct.unpack('f', bytes[1+4*i:5+4*i])
-            quat.append(val[0])
+        quatLen = 4
+        quat = [0 for x in range(quatLen)]
 
-        return IMUDataMsg(quat)
+        for i in range(quatLen):
+            val = struct.unpack('f', bytes[1+4*i:5+4*i])
+            quat[i] = val[0]
+
+        z = struct.pack('B', 0)
+
+        xAccelBytes = bytes[17:19]
+        xAccel = struct.unpack('<i', xAccelBytes + 2*z)[0]
+
+        timestampBytes = bytes[19:22]
+        timestamp = struct.unpack('<i', timestampBytes + z)[0]
+
+        return IMUDataMsg(quat, xAccel, timestamp)
 
     def __str__(self):
-        return "IMU Data: {}".format(str(self.quat))
+        return "quat: {}, xAccel: {}, time: {}".format(str(self.quat), self.xAccel, self.time)
+        # return "IMU Data: {}".format(str(self.quat))

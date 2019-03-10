@@ -85,23 +85,7 @@ struct SerialMan : Periodic<SerialMan>
 		      if (cb.readPacket(lastpacket))
 		      {
 		      	packetId++;
-		      	
-                auto received = std::chrono::system_clock::now();
-		        auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
-		                            (received - lastReceived);
-
-	            lastReceived = received;
-
-                const double alpha = 0.95;
-
-                period = period*alpha + (1-alpha)*diff.count();
-                double freq = 1000.0 / period;
-                
-                if(printCount++ > freq*2)
-                {
-	                std::cout << "Msrd Stream Freq: " << freq << std::endl;
-                	printCount = 0;
-                }
+	      		computeFrequency();
 
                 if(logging)
                 	logWrite.writePacket(lastpacket, PACKET_SIZE);
@@ -191,6 +175,11 @@ struct SerialMan : Periodic<SerialMan>
     	checkOutgoingSerial();
     }
 
+    double getFrequency()
+    {
+    	return 1.0 / period;
+    }
+
 private:
 	Serial* serial;
 	CircularBuffer<2*LINBUFSIZE> cb;
@@ -207,7 +196,27 @@ private:
 	double period = 1000;
 	int printCount = 0;
 
-	std::chrono::time_point<std::chrono::system_clock> lastReceived = std::chrono::system_clock::now();                
+	std::chrono::time_point<std::chrono::system_clock> lastReceived = std::chrono::system_clock::now();      
+
+	void computeFrequency()
+	{
+        auto received = std::chrono::system_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
+                            (received - lastReceived);
+
+        lastReceived = received;
+
+        const double alpha = 0.95;
+
+        period = period*alpha + (1-alpha)*diff.count();
+        double freq = 1000.0 / period;
+        
+        if(printCount++ > freq*2)
+        {
+            std::cout << "Msrd Stream Freq: " << freq << std::endl;
+        	printCount = 0;
+        }		
+	}          
 };
 
 #endif

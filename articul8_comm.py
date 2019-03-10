@@ -9,7 +9,9 @@ import platform
 global articul8
 initialized = False
 
-ports = ["COM6", "COM9"]
+portNicknames = ["thigh", "shank"]
+ports = ["COM6"]
+# ports = ["COM6", "COM9"]
 if (platform.system().lower() == 'darwin'):
     port = "/dev/cu.Articul8Board3-SerialPo"
 
@@ -91,6 +93,11 @@ def ser_getLogPacket(portId=0):
 		result = None
 
 	return result	
+
+def ser_getFrequency(portId):
+	global articul8
+	return articul8.ser_getFrequency(portId)
+
 
 # Loads the library from the c lib
 def loadCSerial():

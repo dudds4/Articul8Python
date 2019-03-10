@@ -3,7 +3,7 @@
 
 typedef unsigned char uchar;
 
-#define PACKET_SIZE 19
+#define PACKET_SIZE 24
 #define PACKET_OVERHEAD 3
 #define PACKET_DATA_SIZE (PACKET_SIZE - PACKET_OVERHEAD)
 

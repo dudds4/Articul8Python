@@ -11,7 +11,7 @@ initialized = False
 
 ports = ["COM6", "COM9"]
 if (platform.system().lower() == 'darwin'):
-    port = "/dev/cu.Articul8Board3-SerialPo"
+    ports = ["/dev/cu.Articul8Board1-SerialPo", "/dev/cu.Articul8Board3-SerialPo"]
 
 # Opens the given serial port at the given index and looks for devices
 def ser_open(port, portId=0):

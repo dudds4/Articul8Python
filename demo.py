@@ -32,13 +32,19 @@ def exampleWriteLog():
 
     ser_stopLogging()
 
-def exampleReadLog():
+def printImuData(imuData, tag):
+    ss = "Quat: {} {} {} {}, Accel: {}, Time: {}".format(                   \
+        imuData.quat[0], imuData.quat[1], imuData.quat[2], imuData.quat[3], \
+        imuData.xAccel, imuData.time)
+
+    print(tag + ss)
+
+def exampleReadLog(nFiles):
 
     # open the latest two log files
     files = glob.glob("*.log")
     files.sort(key=os.path.getmtime)
     files = files[::-1]
-    nFiles = 2
     files = files[0:nFiles]
     print(files)
 
@@ -49,16 +55,19 @@ def exampleReadLog():
     while(not failed):
         for i in range(0, nFiles):
             packet = ser_getLogPacket(i)
-            print("device {}: {}".format(i, packet))
             failed = failed or packet == None
+            if(not failed):
+                # print("device {}: {}".format(i, packet))
+                imuData = IMUDataMsg.fromBytes(packet)
+                print("device {}. ".format(i) + str(imuData))
 
 def main():
     loadCSerial()
     signal.signal(signal.SIGINT, signal_handler)
 
-    # # uncomment to see example of log reading...    
+    # uncomment to see example of log reading...    
     # time.sleep(0.5)
-    # exampleReadLog()
+    # exampleReadLog(1)
     # return
 
     tries = 0
@@ -73,8 +82,8 @@ def main():
     for i, port in enumerate(ports):
         if(not ser_isOpen(i)):
             failed = True
-        else:
-            ser_startLogging(i)
+        # else:
+        #     ser_startLogging(i)
 
     if(failed):
         print("Coundn't open all ports...")
@@ -92,6 +101,16 @@ def main():
 
     print('Starting LRA control thread')
     lraControlThread = startThread(lraControlWorker)
+
+    portIdxs = [i for i in range(len(ports))]
+    while(checkThreadFlag() and len(portIdxs)):
+        
+        while(checkThreadFlag() and ser_getFrequency(i) < 30):
+            time.sleep(0.1)
+
+        if(checkThreadFlag()):
+            ser_startLogging(i)
+            portIdxs = portIdxs[1:]
 
     while(checkThreadCount() > 0):
         time.sleep(1)

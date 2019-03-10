@@ -122,11 +122,18 @@ def main():
 
     if (len(sys.argv) > 1):
         time.sleep(0.5)
-        plotLog(sys.argv[1])
-        return
+        try:
+            nFiles = int(sys.argv[1])
+            exampleReadLog(nFiles)
+            return
+        except:
+            pass
 
-    # exampleReadLog(2)
-    return
+        try:
+            plotLog(sys.argv[1])
+            return
+        except:
+            pass
 
     tries = 0
     for i, port in enumerate(ports):
@@ -140,11 +147,9 @@ def main():
     for i, port in enumerate(ports):
         if(not ser_isOpen(i)):
             failed = True
-        # else:
-        #     ser_startLogging(i)
 
     if(failed):
-        print("Coundn't open all ports...")
+        print("Couldn't open all ports...")
         ser_cleanup()
         sys.exit()
         
@@ -163,8 +168,11 @@ def main():
     portIdxs = [i for i in range(len(ports))]
     while(checkThreadFlag() and len(portIdxs)):
         
-        while(checkThreadFlag() and ser_getFrequency(i) < 30):
-            time.sleep(0.1)
+        msg = None
+        while(checkThreadFlag() and (msg is None or ser_getFrequency(i) < 30)):
+            time.sleep(0.5)
+            print(ser_getFrequency(i))
+            msg = ser_getLastPacket(i)
 
         if(checkThreadFlag()):
             ser_startLogging(i)

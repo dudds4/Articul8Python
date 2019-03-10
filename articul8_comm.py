@@ -144,6 +144,7 @@ def loadCSerial():
 	articul8.ser_send.argtypes = [c_char_p, c_int, c_uint]
 	articul8.ser_getLastPacket.restype = c_void_p
 	articul8.ser_getLogPacket.restype = c_void_p
+	articul8.ser_getFrequency.restype = c_double
 
 	return True
 

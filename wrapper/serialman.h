@@ -177,7 +177,7 @@ struct SerialMan : Periodic<SerialMan>
 
     double getFrequency()
     {
-    	return 1.0 / period;
+    	return 1000.0 / period;
     }
 
 private:

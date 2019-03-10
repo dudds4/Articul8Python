@@ -63,7 +63,7 @@ def rotateVector(v, q):
 def relativeRotation(q1, q2):
     n = quatNormSq(q1)
     invQ1 = [val / n for val in quatConj(q1)]
-    return invQ1*q2
+    return quatProduct(invQ1,q2)
 
 # check below link to see how to get one of r/p/y
 # I just use this method but apply to all three simultaneously

@@ -8,10 +8,8 @@ import time
 import string
 import signal
 import platform
-
-port = "COM7"
-if (platform.system().lower() == 'darwin'):
-    port = "/dev/cu.Articul8Board3-SerialPo"
+import os
+import glob
 
 def signal_handler(sig, frame):
         print('You pressed Ctrl+C!')
@@ -35,25 +33,52 @@ def exampleWriteLog():
     ser_stopLogging()
 
 def exampleReadLog():
-    ser_openLog("articul8Log.Mar_08_17.15.58_201.csv")
-    packet = 1
-    while(packet != None):
-        packet = ser_getLogPacket()
-        if(packet != None):
-            print(packet)                
+
+    # open the latest two log files
+    files = glob.glob("*.log")
+    files.sort(key=os.path.getmtime)
+    files = files[::-1]
+    nFiles = 2
+    files = files[0:nFiles]
+    print(files)
+
+    for i in range(0, nFiles):
+        ser_openLog(files[i], i)
+
+    failed = False
+    while(not failed):
+        for i in range(0, nFiles):
+            packet = ser_getLogPacket(i)
+            print("device {}: {}".format(i, packet))
+            failed = failed or packet == None
 
 def main():
     loadCSerial()
     signal.signal(signal.SIGINT, signal_handler)
-    
-    i = 0
-    while(not ser_isOpen() and i < 5):
-        ser_open(port)
-        i += 1
-        time.sleep(0.2)
 
-    if(not ser_isOpen()):
-        print("Couldn't open serial port")
+    # # uncomment to see example of log reading...    
+    # time.sleep(0.5)
+    # exampleReadLog()
+    # return
+
+    tries = 0
+    for i, port in enumerate(ports):
+        print("Opening port {}".format(port))
+        while(not ser_isOpen(i) and tries < 5):
+            ser_open(port, i)
+            time.sleep(0.2)
+            tries += 1
+
+    failed = False
+    for i, port in enumerate(ports):
+        if(not ser_isOpen(i)):
+            failed = True
+        else:
+            ser_startLogging(i)
+
+    if(failed):
+        print("Coundn't open all ports...")
+        ser_cleanup()
         sys.exit()
         
     print("Starting bt thread")

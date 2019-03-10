@@ -308,14 +308,18 @@ def lraControlWorker():
     threadQuit()
 
 def keepAliveWorker():
+    global ports
     # Send periodic messages to continue streaming 
     while(checkThreadFlag()):
         # print("Sending stream message")
         msg = StreamMsg(20)    # Set IMU streaming period (in ms)
-        if(not ser_isOpen()):
-            ser_open(port)
+        
+        for i, port in enumerate(ports):
+            if(not ser_isOpen(i)):
+                ser_open(port)
 
-        ser_write(msg.toBytes())
+            ser_write(msg.toBytes(), i)
+        
         time.sleep(1)
 
     print("Keep Alive Worker Quiting...")

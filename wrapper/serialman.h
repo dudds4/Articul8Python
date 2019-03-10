@@ -42,7 +42,17 @@ struct SerialMan : Periodic<SerialMan>
 		logging = log;
 		
 		if(logging)
-			logWrite.openLog();
+		{
+			std::string portName = serial->getPort();
+			std::string tag;
+			const int MAX_L = 10;
+			if(portName.length() < MAX_L)
+				tag = portName;
+			else
+				tag = portName.substr(portName.length()-MAX_L, portName.length());
+
+			logWrite.openLog(tag);
+		}
 		else
 			logWrite.closeLog();
 	}
@@ -76,20 +86,17 @@ struct SerialMan : Periodic<SerialMan>
 		      {
 		      	packetId++;
 		      	
-                static auto lastReceived = std::chrono::system_clock::now();
                 auto received = std::chrono::system_clock::now();
-
 		        auto diff = std::chrono::duration_cast<std::chrono::milliseconds> 
 		                            (received - lastReceived);
+
 	            lastReceived = received;
 
-                static double period = 1000;
                 const double alpha = 0.95;
 
                 period = period*alpha + (1-alpha)*diff.count();
                 double freq = 1000.0 / period;
                 
-                static int printCount = 0;
                 if(printCount++ > freq*2)
                 {
 	                std::cout << "Msrd Stream Freq: " << freq << std::endl;
@@ -196,6 +203,11 @@ private:
 	mutable std::mutex myMutex;
 	bool logging = false;
 	LogWriter logWrite;
+
+	double period = 1000;
+	int printCount = 0;
+
+	std::chrono::time_point<std::chrono::system_clock> lastReceived = std::chrono::system_clock::now();                
 };
 
 #endif

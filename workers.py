@@ -113,9 +113,16 @@ def tcpServerWorker():
 
                         ser_write(msg.toBytes())
 
+                    elif (cmd[POS_DATA+1] == PRINT_BATTERY):
+                        if(not ser_isOpen()):
+                            ser_open(port)
+
+                        ser_write(BatteryReportMsg.toBytes())
+
                     else:
                         print("Received invalid command: {}".format(cmd))
                         connectionFailed = True
+
             except Exception as e:
                 pass
     finally:
@@ -174,6 +181,10 @@ def bluetoothWorker():
 
         elif (msg[POS_DATA] == OFFSET_REPORT_MSG):
             parsed_message = OffsetMsg.fromBytes(msg)
+            print(parsed_message)
+
+        elif (msg[POS_DATA] == BATTERY_REPORT_MSG):
+            parsed_message = BatteryReportMsg.fromBytes(msg)
             print(parsed_message)
 
         else:

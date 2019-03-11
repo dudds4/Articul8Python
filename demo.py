@@ -84,11 +84,10 @@ def main():
         msg = None
         while(checkThreadFlag() and (msg is None or ser_getFrequency(i) < 30)):
             time.sleep(0.5)
-            # print(ser_getFrequency(i))
             msg = ser_getLastPacket(i)
 
         if(checkThreadFlag()):
-            ser_startLogging(i)
+            ser_startLogging(portIdxs[0])
             portIdxs = portIdxs[1:]
 
     while(checkThreadCount() > 0):

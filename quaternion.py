@@ -1,6 +1,73 @@
 
 import math
 
+class Quat:
+    def __init__(self, w, x, y=None, z=None):
+        if(y is None and z is None):
+            a = w
+            theta = x
+            self.w = math.cos(theta/2)
+            s = math.sin(theta/2)
+            self.x = a[0]*s
+            self.y = a[0]*s
+            self.z = a[0]*s
+        else:
+            self.w = w
+            self.x = x
+            self.y = y
+            self.z = z
+
+    def __add__(self, other):
+        return Quat(self.w + other.w, self.x + other.x, self.y + other.y, self.z + other.z)
+
+    def __sub__(self, other):
+        return Quat(self.w - other.w, self.x - other.x, self.y - other.y, self.z - other.z)
+
+    def __mul__(self, other):
+        prod0 = self.w*other.w - self.x*other.x - self.y*other.y - self.z*other.z
+        prod1 = self.w*other.x + self.x*other.w + self.y*other.z - self.z*other.y
+        prod2 = self.w*other.y - self.x*other.z + self.y*other.w + self.z*other.x
+        prod3 = self.w*other.z + self.x*other.y - self.y*other.x + self.z*other.w
+        return Quat(prod0, prod1, prod2, prod3)
+
+    def __truediv__(self, f):
+        return Quat(self.w/f, self.x/f, self.y/f, self.z/f)
+
+    def __getitem__(self, index):
+        if(index == 0):
+            return self.w
+        if(index == 1):
+            return self.x
+        if(index == 2):
+            return self.y
+        if(index == 3):
+            return self.z
+
+    def __str__(self):
+        return ("[{}, {}, {}, {}]".format(self.w, self.x, self.y, self.z))
+
+    def conj(self):
+        n = -1
+        return Quat(self.w, n*self.x, n*self.y, n*self.z)
+
+    def normSquared(self):
+        q = self
+        return q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]
+
+    def norm(self):
+        return math.sqrt(self.normSquared())
+
+    def inv(self):
+        return self.conj() / self.norm()
+
+    def round(self, decimalPlaces):
+        self.w = round(self.w, decimalPlaces)
+        self.x = round(self.x, decimalPlaces)
+        self.y = round(self.y, decimalPlaces)
+        self.z = round(self.z, decimalPlaces)
+        return self
+
+
 def quatConj(q):
     conj = [0,0,0,0]
     conj[0] = q[0]

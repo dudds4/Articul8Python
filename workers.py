@@ -7,6 +7,7 @@ import sys
 import time
 import math
 import socket
+import numpy as np
 
 tcpConnection = None
 tcpLock = threading.Lock()
@@ -15,9 +16,9 @@ exercising = False
 recording = False
 recordedMovement = []
 
-imuDataAvailable = 0
-latestImuData = ''
+latestImuData = [None] * len(ports)
 
+NUM_LRAS = 8
 LRA_WORKER_PERIOD = 0.33
 MIN_REC_MOVEMENT = 5
 VIBRATE_THRESHOLD_DIST = 0.087 # 5 deg in rad
@@ -100,24 +101,26 @@ def tcpServerWorker():
                         print(recordedMovement)
 
                     elif (cmd[POS_DATA+1] == REPORT_OFFSETS):
-                        if(not ser_isOpen()):
-                            ser_open(port)
+                        for i, port in enumerate(ports):
+                            if(not ser_isOpen()):
+                                ser_open(port)
 
-                        ser_write(OffsetMsg.toBytes())
+                            ser_write(OffsetMsg.toBytes(), i)
 
                     elif (cmd[POS_DATA+1] == CALIBRATE_ACCEL or cmd[POS_DATA+1] == CALIBRATE_GYRO):
                         msg = CalibrateMsg(cmd[POS_DATA+1])
+                        for i, port in enumerate(ports):
+                            if(not ser_isOpen()):
+                                ser_open(port)
 
-                        if(not ser_isOpen()):
-                            ser_open(port)
-
-                        ser_write(msg.toBytes())
+                            ser_write(msg.toBytes())
 
                     elif (cmd[POS_DATA+1] == PRINT_BATTERY):
-                        if(not ser_isOpen()):
-                            ser_open(port)
+                        for i, port in enumerate(ports):
+                            if(not ser_isOpen()):
+                                ser_open(port)
 
-                        ser_write(BatteryReportMsg.toBytes())
+                            ser_write(BatteryReportMsg.toBytes(), i)
 
                     else:
                         print("Received invalid command: {}".format(cmd))
@@ -137,93 +140,96 @@ def tcpServerWorker():
     print('TCP Server Worker Quitting')
     threadQuit()
 
+
 def bluetoothWorker():
     global tcpConnection, latestImuData, recording, recordedMovement
 
     MAX_NUM_ERRORS = 4
-    sendCounter = 0
-    recvCounter = 0
+    sendCounters = [0] * len(ports)
+    recvCounters = [0] * len(ports)
+    latestImuData = [None] * len(ports)
 
     while(checkThreadFlag()):
-        msg = ser_getLastPacket()
-        if(msg == None):
-            time.sleep(0.01)
-            continue
 
-        parsed_message = None
-        if (msg[POS_DATA] == IMU_DATA_MSG):
-            parsed_message = IMUDataMsg.fromBytes(msg)
+        for i, port in enumerate(ports):
 
-            if (recording):
-                recordedMovement.append(parsed_message)
+            if(not ser_isOpen(i)):
+                ser_open(port)
 
-            if (tcpConnection is not None):
-                sendTCP(msg)
+            msg = ser_getLastPacket(i)
 
-                latestImuData = parsed_message
-                sendCounter += 1
-                if sendCounter >= 50:
-                    print('Sent {} IMU Packets'.format(sendCounter))
-                    sendCounter = 0
+            if(msg == None):
+                time.sleep(0.001)
+                continue
+
+            parsed_message = None
+            if (msg[POS_DATA] == IMU_DATA_MSG):
+                parsed_message = IMUDataMsg.fromBytes(msg)
+                latestImuData[i] = parsed_message
+
+                if (recording):
+                    if None in latestImuData:
+                        print("latestImuData contained None in Port {}".format(latestImuData.find(None)))
+                    else:
+                        recordedMovement.append(latestImuData)
+
+                # TODO: Send all latestImuData over TCP
+                if (tcpConnection is not None and i == 0):
+                    sendTCP(msg)
+
+                    sendCounter[i] += 1
+                    if sendCounter[i] >= 50:
+                        print('Sent {} IMU Packets from Port {}'.format(sendCounters[i], i))
+                        sendCounter[i] = 0
+                else:
+                    pass
+
+                recvCounters[i] += 1
+                if recvCounters[i] >= 50:
+                    print('Got {} IMU Packets from Port {}'.format(recvCounters[i], i))
+                    recvCounters[i] = 0
+
+            elif (msg[POS_DATA] == OFFSET_REPORT_MSG):
+                parsed_message = OffsetMsg.fromBytes(msg)
+                print("{} from Port {}".format(parsed_message, i))
+
+            elif (msg[POS_DATA] == BATTERY_REPORT_MSG):
+                parsed_message = BatteryReportMsg.fromBytes(msg)
+                print("{} from Port {}".format(parsed_message, i))
+
             else:
-                pass
-
-            recvCounter += 1
-            if recvCounter >= 50:
-                print('Got {} IMU Packets'.format(recvCounter))
-                recvCounter = 0
-
-        elif (msg[POS_DATA] == ACK_MSG):
-            parsed_message = ACKMsg.fromBytes(msg)
-
-        elif (msg[POS_DATA] == STANDBY_MSG):
-            parsed_message = StandbyMsg.fromBytes(msg)
-
-        elif (msg[POS_DATA] == OFFSET_REPORT_MSG):
-            parsed_message = OffsetMsg.fromBytes(msg)
-            print(parsed_message)
-
-        elif (msg[POS_DATA] == BATTERY_REPORT_MSG):
-            parsed_message = BatteryReportMsg.fromBytes(msg)
-            print(parsed_message)
-
-        else:
-            # print("Invalid Data Type")
-            continue
+                continue
 
         time.sleep(0.001)
-
-        # print("Received: {}".format(parsed_message))
 
     print("Bluetooth Worker Quiting...")
     threadQuit()
 
-def oldLraControlWorker():
-    global tcpConnection, latestImuData
 
-    onIntensities = [int(127)]*8
-    onMsgBytes = LRACmdMsg(onIntensities).toBytes()
+def testLrasWorker():
+    global tcpConnection
 
-    offIntensities = [int(0)]*8
-    offMsgBytes = LRACmdMsg(offIntensities).toBytes()
+    lraId = 0
 
-    lastLraMsg = offMsgBytes
-
-    i = 0
     while(checkThreadFlag()):
-        intensities = [int(127)]*8
-        intensities[i] = 127
+        intensities = [int(0)] * NUM_LRAS
+        intensities[lraId] = 127
         newLraMsg = LRACmdMsg(intensities).toBytes()
 
-        ser_write(newLraMsg)
+        for i, port in enumerate(ports):
+            if(not ser_isOpen(i)):
+                ser_open(port)
+
+            ser_write(newLraMsg, i)
+
         if (tcpConnection is not None):
             sendTCP(newLraMsg)
 
-        time.sleep(LRA_WORKER_PERIOD)
-        time.sleep(LRA_WORKER_PERIOD)
-        i += 1
-        if (i >= 8):
-            i = 0
+        time.sleep(LRA_WORKER_PERIOD * 3)
+
+        lraId += 1
+        if (lraId >= NUM_LRAS):
+            lraId = 0
 
     print("LRA Command Worker Quiting...")
     threadQuit()
@@ -232,80 +238,80 @@ def oldLraControlWorker():
 def lraControlWorker():
     global tcpConnection, latestImuData
 
-    onIntensities = [int(127)]*8
-    onMsgBytes = LRACmdMsg(onIntensities).toBytes()
-
-    offIntensities = [int(0)]*8
-    offMsgBytes = LRACmdMsg(offIntensities).toBytes()
-
-    lastLraMsg = offMsgBytes
+    lastLraMsgs = [None] * len(ports)
 
     while(checkThreadFlag()):
 
-        newLraMsg = offMsgBytes
+        for i, port in enumerate(ports):
 
-        # if (exercising and not(recording) and latestImuData is None):
-        #     print('WTF IMUDATA')
+            intensities = [0] * NUM_LRAS
 
-        if (exercising and not(recording) and latestImuData != None
-            and len(recordedMovement) >= MIN_REC_MOVEMENT):
+            if (exercising and not(recording) and latestImuData[i] is not None):
 
-            minDist = VIBRATE_THRESHOLD_DIST + 1
-            imuGrav = quatToGravity(latestImuData.quat)
-            magImuGrav = math.sqrt(sum([elem*elem for elem in imuGrav]))
+                nearestMag = None
+                nearestAngle = None
+                minDist = math.inf
 
-            for movementPoint in recordedMovement:
+                imuGrav = quatToGravity(latestImuData[i].quat)
+                magImuGrav = np.linalg.norm(imuGrav)
 
-                mvGrav = quatToGravity(movementPoint.quat)
-                magMvGrav = math.sqrt(sum([elem*elem for elem in mvGrav]))
+                for movementPoint in recordedMovement:
 
-                if (magMvGrav != 0 and magImuGrav != 0):
-                    normDot = (imuGrav[0]*mvGrav[0] + imuGrav[1]*mvGrav[1] + imuGrav[2]*mvGrav[2]) / (magMvGrav * magImuGrav)
-                    dist = math.acos(normDot)
-                else:
-                    dist = 0
+                    mvGrav = quatToGravity(movementPoint[i].quat)
+                    magMvGrav = np.linalg.norm(mvGrav)
 
-                if (dist >= VIBRATE_THRESHOLD_DIST and dist < minDist):
-                    minDist = dist
-                    z_dist = mvGrav[2] - imuGrav[2]
-                    y_dist = -mvGrav[1] + imuGrav[1]
+                    if (magMvGrav == 0 or magImuGrav == 0):
+                        continue
 
-                    mag = math.sqrt(y_dist**2 + z_dist**2)
-                    angle = math.atan2(y_dist, z_dist)
-                    if (angle < 0):
-                        angle += 2*math.pi
+                    normDot = np.dot(imuGrav, mvGrav) / (magMvGrav * magImuGrav)
+                    dist = math.acos(np.clip(normDot, -1, 1))
+
+                    if (dist >= VIBRATE_THRESHOLD_DIST and dist < minDist):
+                        minDist = dist
+                        z_dist = mvGrav[2] - imuGrav[2]
+                        y_dist = -mvGrav[1] + imuGrav[1]
+
+                        nearestMag = math.sqrt(y_dist**2 + z_dist**2)
+                        nearestAngle = math.atan2(y_dist, z_dist)
+                        if (nearestAngle < 0):
+                            nearestAngle += 2*math.pi
+
+                if (nearestAngle is not None and nearestMag is not None):
+                    # Linearly interpolate magnitude between two adjacent LRAs
+                    angleSegment = 2*math.pi/NUM_LRAS
 
                     idx1 = 0
-                    while ((idx1+1) * math.pi/4 < angle):
+                    while ((idx1+1) * angleSegment < nearestAngle):
                         idx1 += 1
 
-                    idx2 = (idx1 + 1) % 8
-                    portion2 = (angle - idx1 * math.pi/4) / (math.pi / 4)
+                    idx2 = (idx1 + 1) % NUM_LRAS
+
+                    portion2 = (nearestAngle - idx1 * angleSegment) / angleSegment
                     portion1 = 1 - portion2
 
-                    if (portion1 > 1 or portion1 < 0):
-                        print("portioning error")
-                        print("Angle {} idx1 {} portion1 {}".format(angle, idx1, portion1))
-
-                    intensities = [0] * 8
-                    intensities[idx1] = mag * portion1
-                    intensities[idx2] = mag * portion2
+                    intensities[idx1] = nearestMag * portion1
+                    intensities[idx2] = nearestMag * portion2
                     intensities = [int(min(127, 600*elem)) for elem in intensities]
 
-                    newLraMsg = LRACmdMsg(intensities).toBytes()
+            newLraMsg = LRACmdMsg(intensities).toBytes()
 
-        if (newLraMsg != lastLraMsg):
-            ser_write(newLraMsg)
-            if (tcpConnection is not None):
-                sendTCP(newLraMsg)
-                # tcpConnection.send(newLraMsg)
-                # tcpConnection.send(newLraMsg) # Twice for good measure
-            lastLraMsg = newLraMsg
+            if (newLraMsg != lastLraMsgs[i]):
 
-            time.sleep(LRA_WORKER_PERIOD)
+                if(not ser_isOpen(i)):
+                    ser_open(port)
+
+                ser_write(newLraMsg, i)
+                lastLraMsgs[i] = newLraMsg
+
+                # TODO: Send all LRAs over TCP
+                if (tcpConnection is not None and i == 0):
+                    sendTCP(newLraMsg)
+
+        time.sleep(LRA_WORKER_PERIOD)
 
     print("LRA Command Worker Quiting...")
     threadQuit()
+
 
 def keepAliveWorker():
     global ports

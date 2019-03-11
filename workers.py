@@ -2,6 +2,7 @@ from articul8_comm import *
 from msg_defs import *
 from threadman import *
 from quaternion import *
+from movement import *
 
 import sys
 import time
@@ -13,15 +14,14 @@ tcpConnection = None
 tcpLock = threading.Lock()
 
 exercising = False
+baselineImuData = [None] * len(ports)
+
 recording = False
-recordedMovement = []
+recordedMovement = Movement()
 
 latestImuData = [None] * len(ports)
 
-NUM_LRAS = 8
-LRA_WORKER_PERIOD = 0.33
-MIN_REC_MOVEMENT = 5
-VIBRATE_THRESHOLD_DIST = 0.087 # 5 deg in rad
+LRA_WORKER_PERIOD = 0.1
 
 def sendTCP(msg):
     global tcpConnection, tcpLock
@@ -39,7 +39,7 @@ def sendTCP(msg):
 
 # For now if you close the GUI you have to restart python
 def tcpServerWorker():
-    global tcpConnection, exercising, recording, recordedMovement
+    global tcpConnection, exercising, recording, recordedMovement, baselineImuData
 
     tcpConnection = None
 
@@ -78,18 +78,19 @@ def tcpServerWorker():
                     if (cmd[POS_DATA+1] == START_RECORDING):
                         if not(recording):
                             recording = True
-                            recordedMovement = []
+                            recordedMovement = Movement()
                             print("Starting Recording!")
 
                     elif (cmd[POS_DATA+1] == STOP_RECORDING):
                         if (recording):
                             recording = False
                             print("Ending Recording!")
-                            print("Recording size: {}".format(len(recordedMovement)))
+                            print("Recording size: {}".format(len(recordedMovement.stateVector)))
 
                     elif (cmd[POS_DATA+1] == START_EXERCISE):
                         if not(exercising):
                             exercising = True
+                            baselineImuData = latestImuData.copy()
                             print("Starting Exercise!")
 
                     elif (cmd[POS_DATA+1] == STOP_EXERCISE):
@@ -170,7 +171,7 @@ def bluetoothWorker():
                     if None in latestImuData:
                         print("latestImuData contained None in Port {}".format(latestImuData.find(None)))
                     else:
-                        recordedMovement.append(latestImuData.copy())
+                        recordedMovement.update(latestImuData)
 
                 # TODO: Send all latestImuData over TCP
                 if (tcpConnection is not None and i == 0):
@@ -235,76 +236,30 @@ def testLrasWorker():
 
 
 def lraControlWorker():
-    global tcpConnection, latestImuData, recordedMovement, recording, exercising
+    global tcpConnection, latestImuData, baselineImuData, recordedMovement, recording, exercising
 
+    offLraMsgs  = [LRACmdMsg([0] * numLRAs[i]).toBytes() for i in range(len(ports))]
     lastLraMsgs = [None] * len(ports)
 
     while(checkThreadFlag()):
 
+        newLraMsgs = offLraMsgs
+
+        if (exercising and not(recording) and not(None in latestImuData)):
+            newLraMsgs = recordedMovement.getLraMsgs(latestImuData, baselineImuData)
+
         for i, port in enumerate(ports):
 
-            intensities = [0] * NUM_LRAS
-
-            if (exercising and not(recording) and latestImuData[i] is not None):
-
-                nearestMag = None
-                nearestAngle = None
-                minDist = math.inf
-
-                imuGrav = quatToGravity(latestImuData[i].quat)
-                magImuGrav = np.linalg.norm(imuGrav)
-
-                for movementPoint in recordedMovement:
-
-                    mvGrav = quatToGravity(movementPoint[i].quat)
-                    magMvGrav = np.linalg.norm(mvGrav)
-
-                    if (magMvGrav == 0 or magImuGrav == 0):
-                        continue
-
-                    normDot = np.dot(imuGrav, mvGrav) / (magMvGrav * magImuGrav)
-                    dist = math.acos(np.clip(normDot, -1, 1))
-
-                    if (dist >= VIBRATE_THRESHOLD_DIST and dist < minDist):
-                        minDist = dist
-                        z_dist = mvGrav[2] - imuGrav[2]
-                        y_dist = -mvGrav[1] + imuGrav[1]
-
-                        nearestMag = math.sqrt(y_dist**2 + z_dist**2)
-                        nearestAngle = math.atan2(y_dist, z_dist)
-                        if (nearestAngle < 0):
-                            nearestAngle += 2*math.pi
-
-                if (nearestAngle is not None and nearestMag is not None):
-                    # Linearly interpolate magnitude between two adjacent LRAs
-                    angleSegment = 2*math.pi/NUM_LRAS
-
-                    idx1 = 0
-                    while ((idx1+1) * angleSegment < nearestAngle):
-                        idx1 += 1
-
-                    idx2 = (idx1 + 1) % NUM_LRAS
-
-                    portion2 = (nearestAngle - idx1 * angleSegment) / angleSegment
-                    portion1 = 1 - portion2
-
-                    intensities[idx1] = nearestMag * portion1
-                    intensities[idx2] = nearestMag * portion2
-                    intensities = [int(min(127, 600*elem)) for elem in intensities]
-
-            newLraMsg = LRACmdMsg(intensities).toBytes()
-
-            if (newLraMsg != lastLraMsgs[i]):
-
+            if (newLraMsgs[i] != lastLraMsgs[i]):
                 if(not ser_isOpen(i)):
                     ser_open(port)
 
-                ser_write(newLraMsg, i)
-                lastLraMsgs[i] = newLraMsg
+                ser_write(newLraMsgs[i], i)
+                lastLraMsgs[i] = newLraMsgs[i]
 
                 # TODO: Send all LRAs over TCP
                 if (tcpConnection is not None and i == 0):
-                    sendTCP(newLraMsg)
+                    sendTCP(newLraMsgs[i])
 
         time.sleep(LRA_WORKER_PERIOD)
 

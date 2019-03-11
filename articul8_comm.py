@@ -10,6 +10,8 @@ global articul8
 initialized = False
 
 portNicknames = ["thigh", "shank"]
+numLRAs = [8, 6]
+
 ports = ["COM6"]
 # ports = ["COM6", "COM9"]
 if (platform.system().lower() == 'darwin'):

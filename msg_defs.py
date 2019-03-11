@@ -112,7 +112,7 @@ class LRACmdMsg:
 
     def toBytes(self):
         data = struct.pack('B', LRA_CONTROL_MSG)
-        for i in range(8):
+        for i in range(len(self.intensities)):
             data += struct.pack('B', int(self.intensities[i]))
         return wrapDataInPacket(data)
 

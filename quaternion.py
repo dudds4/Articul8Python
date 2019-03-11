@@ -56,7 +56,7 @@ def quatInv(q):
 def rotateVector(v, q):
     qInv = quatConj(q)
     qv = [0] + v
-    quatProduct(quatProduct(q, qv), qInv)
+    return quatProduct(quatProduct(q, qv), qInv)
 
 # not actually sure that this is correct..
 # my logic was that if we have a zero quat,

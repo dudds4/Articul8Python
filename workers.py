@@ -18,7 +18,6 @@ recordedMovement = []
 
 latestImuData = [None] * len(ports)
 
-NUM_LRAS = 8
 LRA_WORKER_PERIOD = 0.33
 MIN_REC_MOVEMENT = 5
 VIBRATE_THRESHOLD_DIST = 0.087 # 5 deg in rad
@@ -243,7 +242,7 @@ def lraControlWorker():
 
         for i, port in enumerate(ports):
 
-            intensities = [0] * NUM_LRAS
+            intensities = [0] * numLRAs[i]
 
             if (exercising and not(recording) and latestImuData[i] is not None):
 
@@ -277,13 +276,13 @@ def lraControlWorker():
 
                 if (nearestAngle is not None and nearestMag is not None):
                     # Linearly interpolate magnitude between two adjacent LRAs
-                    angleSegment = 2*math.pi/NUM_LRAS
+                    angleSegment = 2*math.pi/numLRAs[i]
 
                     idx1 = 0
                     while ((idx1+1) * angleSegment < nearestAngle):
                         idx1 += 1
 
-                    idx2 = (idx1 + 1) % NUM_LRAS
+                    idx2 = (idx1 + 1) % numLRAs[i]
 
                     portion2 = (nearestAngle - idx1 * angleSegment) / angleSegment
                     portion1 = 1 - portion2

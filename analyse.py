@@ -76,27 +76,31 @@ def plotJointAngles(imuDataSets, title=''):
     n = min([len(imuDataSet) for imuDataSet in imuDataSets])
     print('{} data points'.format(n))
 
-    names = ['right shank', 'right thigh']
-    for imuDataSet in imuDataSets:
+    names = ['shank', 'thigh']
+    line_types = ['-', '--']
+    for i, imuDataSet in enumerate(imuDataSets):
 
         imuDataSet = imuDataSet[:n]
         initialQuat = imuDataSet[0].quat
 
-        globalQuatDiff = [quatProduct(initialQuat, quatConj(IMUSample.quat)) for IMUSample in imuDataSet]
-        localQuatDiff = [[globalQuat[0]] + (rotateVector(globalQuat[1:], quatConj(initialQuat))[1:]) for globalQuat in globalQuatDiff]
+        globalQuats = [IMUSample.quat for IMUSample in imuDataSet]
+        globalQuatDiff = [quatProduct(initialQuat, quatConj(quat)) for quat in globalQuats]
+
+        localQuatDiff = [[globalQuatDiff[0]] + (rotateVector(globalQuatDiff[1:], quatConj(globalQuat))[1:]) for globalQuat, globalQuatDiff in zip(globalQuats, globalQuatDiff)]
 
         roll =  [180/math.pi*quatTo3Angle(q)[0] for q in localQuatDiff]
         pitch = [180/math.pi*quatTo3Angle(q)[1] for q in localQuatDiff]
         yaw  =  [180/math.pi*quatTo3Angle(q)[2] for q in localQuatDiff]
 
         t = range(len(roll))
-        plt.plot(t, roll)
-        plt.plot(t, pitch)
-        plt.plot(t, yaw)
+        plt.plot(t, roll, 'r'+line_types[i])
+        plt.plot(t, pitch, 'b'+line_types[i])
+        plt.plot(t, yaw, 'g'+line_types[i])
 
-        plt.legend(['roll (x) (ext rot)','pitch (y) (abduction)','yaw (z) (flexion)'])
-        plt.title(title)
-        plt.show()
+    plt.legend(['roll (x) (ext rot) '+names[0],'pitch (y) (abduction) '+names[0],'yaw (z) (flexion) '+names[0],
+                'roll (x) (ext rot) '+names[1],'pitch (y) (abduction) '+names[1],'yaw (z) (flexion) '+names[1]])
+    plt.title(title)
+    plt.show()
 
 def main():
     loadCSerial()
@@ -106,7 +110,7 @@ def main():
     else:
         for i in range(1, len(sys.argv)):
             imuDataSets = readIMUData(sys.argv[i])
-            plotKneeAngles(imuDataSets, sys.argv[i])
+            plotJointAngles(imuDataSets, sys.argv[i])
 
 if __name__ == '__main__':
     main()

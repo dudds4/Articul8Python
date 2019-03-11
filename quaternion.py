@@ -2,8 +2,8 @@
 import math
 
 class Quat:
-    def __init__(self, w, x, y=None, z=None):
-        if(y is None and z is None):
+    def __init__(self, w, x=None, y=None, z=None):
+        if(y is None and z is None and hasattr(w, '__len__') and len(w) == 3):
             a = w
             theta = x
             self.w = math.cos(theta/2)
@@ -11,6 +11,11 @@ class Quat:
             self.x = a[0]*s
             self.y = a[0]*s
             self.z = a[0]*s
+        elif(hasattr(w, '__len__') and len(w) == 4):
+            self.w = w[0]
+            self.x = w[1]
+            self.y = w[2]
+            self.z = w[3]
         else:
             self.w = w
             self.x = x
@@ -43,6 +48,10 @@ class Quat:
         if(index == 3):
             return self.z
 
+        b = 0 if index.start is None else index.start
+        e = 4 if index.stop is None else index.stop
+        return [self[i] for i in range(b, e)]
+
     def __str__(self):
         return ("[{}, {}, {}, {}]".format(self.w, self.x, self.y, self.z))
 
@@ -57,8 +66,17 @@ class Quat:
     def norm(self):
         return math.sqrt(self.normSquared())
 
+    def normalize(self):
+        self = self / self.norm()
+        return self
+
     def inv(self):
         return self.conj() / self.norm()
+
+    def rotate(self, vec):
+        vQuat = Quat(0, vec[0], vec[1], vec[2])
+        r = self * vQuat * self.inv()
+        return [r[i] for i in range(1,4)]
 
     def round(self, decimalPlaces):
         self.w = round(self.w, decimalPlaces)
@@ -66,23 +84,6 @@ class Quat:
         self.y = round(self.y, decimalPlaces)
         self.z = round(self.z, decimalPlaces)
         return self
-
-
-def quatConj(q):
-    conj = [0,0,0,0]
-    conj[0] = q[0]
-    conj[1] = -q[1]
-    conj[2] = -q[2]
-    conj[3] = -q[3]
-    return conj
-
-def quatProduct(q1, q2):
-    prod = [0,0,0,0]
-    prod[0] = q1[0]*q2[0] - q1[1]*q2[1] - q1[2]*q2[2] - q1[3]*q2[3]
-    prod[1] = q1[0]*q2[1] + q1[1]*q2[0] + q1[2]*q2[3] - q1[3]*q2[2]
-    prod[2] = q1[0]*q2[2] - q1[1]*q2[3] + q1[2]*q2[0] + q1[3]*q2[1]
-    prod[3] = q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1] + q1[3]*q2[0]
-    return prod
 
 def quatDist(q1, q2):
     dotProduct = q1[0]*q2[0] + q1[1]*q2[1] + q1[2]*q2[2] + q1[3]*q2[3]
@@ -104,33 +105,10 @@ def quatToGravity(quat):
 
     return [gx, gy, gz]
 
-
-def quatNormSq(q):
-    return q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]
-
-def quatNorm(q):
-    return math.sqrt(quatNormSq(q))
-
-def quatNormalize(q):
-    norm = quatNorm(q)
-    return [x/norm for x in q]
-
-def quatInv(q):
-    conj = quatConj(q)
-    normsq = quatNormSq(q)
-    return ([a / normsq for a in conj])
-
-def rotateVector(v, q):
-    qInv = quatConj(q)
-    qv = [0] + v
-    return quatProduct(quatProduct(q, qv), qInv)
-
 # not actually sure that this is correct..
 # my logic was that if we have a zero quat,
 def relativeRotation(q1, q2):
-    n = quatNormSq(q1)
-    invQ1 = [val / n for val in quatConj(q1)]
-    return quatProduct(invQ1,q2)
+    return q1.inv() * q2
 
 # check below link to see how to get one of r/p/y
 # I just use this method but apply to all three simultaneously
@@ -140,12 +118,12 @@ def quatToRPY(q):
     mags = [math.sqrt(w2 + a*a) for a in q[1:4]]
     return [2 * math.acos(q[0] / a) for a in mags]
 
-def quatByUnitAxes(q, idx):
-    if(idx == 0):
-        return [-1*q[1], q[0], q[3], -1*q[2]]
-    if(idx == 1):
-        return [-1*q[2], -1*q[3], q[0], q[1]]
-    return [-1*q[3], q[2], -1*q[1], q[0]]
+# def quatByUnitAxes(q, idx):
+#     if(idx == 0):
+#         return [-1*q[1], q[0], q[3], -1*q[2]]
+#     if(idx == 1):
+#         return [-1*q[2], -1*q[3], q[0], q[1]]
+#     return [-1*q[3], q[2], -1*q[1], q[0]]
 
 def vectorDot(v1, v2):
     return sum( [a*b for a,b in zip(v1,v2)] )
@@ -174,7 +152,7 @@ def quatTo3Angle(q):
     den = 1 - 2*(q[1]*q[1] + q[2]*q[1])
     # print(num)
     # print(den)
-    angles[0] = math.atan(num/den)
+    angles[0] = math.atan2(num,den)
 
     num = 2*(q[0]*q[2] - q[1]*q[3])
     angles[1] = math.asin(num)
@@ -182,7 +160,7 @@ def quatTo3Angle(q):
 
     num = 2*(q[0]*q[3] + q[1]*q[2])
     den = 1 - 2*(q[2]*q[2] + q[3]*q[3])
-    angles[2] = math.atan(num/den)
+    angles[2] = math.atan2(num,den)
     # print(num)
     # print(den)
 

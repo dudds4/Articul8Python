@@ -60,10 +60,10 @@ def plotKneeAngles(imuDataSets, title=''):
     n = min([len(imuDataSet) for imuDataSet in imuDataSets])
     print('{} data points'.format(n))
 
-    shankIMU = imuDataSets[0][:n]
-    thighIMU = imuDataSets[1][:n]
+    shankIMU = [Quat(s.quat) for s in imuDataSets[0][:n]]
+    thighIMU = [Quat(s.quat) for s in imuDataSets[1][:n]]
 
-    kneeAngles = [getKneeAngle(s.quat, t.quat) for s,t in zip(shankIMU, thighIMU)]
+    kneeAngles = [getKneeAngle(s, t) for s,t in zip(shankIMU, thighIMU)]
 
     t = range(len(kneeAngles))
     plt.plot(t, kneeAngles)
@@ -81,12 +81,12 @@ def plotJointAngles(imuDataSets, title=''):
     for i, imuDataSet in enumerate(imuDataSets):
 
         imuDataSet = imuDataSet[:n]
-        initialQuat = imuDataSet[0].quat
+        initialQuat = Quat(imuDataSet[0].quat)
 
-        globalQuats = [IMUSample.quat for IMUSample in imuDataSet]
-        globalQuatDiff = [quatProduct(initialQuat, quatConj(quat)) for quat in globalQuats]
+        globalQuats = [Quat(IMUSample.quat) for IMUSample in imuDataSet]
+        globalQuatDiffs = [initialQuat * quat.conj() for quat in globalQuats]
 
-        localQuatDiff = [[globalQuatDiff[0]] + (rotateVector(globalQuatDiff[1:], quatConj(globalQuat))[1:]) for globalQuat, globalQuatDiff in zip(globalQuats, globalQuatDiff)]
+        localQuatDiff = [ [globalQuatDiff[0]] + globalQuat.conj().rotate(globalQuatDiff[1:]) for globalQuat, globalQuatDiff in zip(globalQuats, globalQuatDiffs)]
 
         roll =  [180/math.pi*quatTo3Angle(q)[0] for q in localQuatDiff]
         pitch = [180/math.pi*quatTo3Angle(q)[1] for q in localQuatDiff]
@@ -110,7 +110,8 @@ def main():
     else:
         for i in range(1, len(sys.argv)):
             imuDataSets = readIMUData(sys.argv[i])
-            plotJointAngles(imuDataSets, sys.argv[i])
+            # plotKneeAngles(imuDataSets, sys.argv[i])
+            plotQuaternia(imuDataSets)
 
 if __name__ == '__main__':
     main()

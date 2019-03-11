@@ -144,7 +144,6 @@ def tcpServerWorker():
 def bluetoothWorker():
     global tcpConnection, latestImuData, recording, recordedMovement
 
-    MAX_NUM_ERRORS = 4
     sendCounters = [0] * len(ports)
     recvCounters = [0] * len(ports)
     latestImuData = [None] * len(ports)
@@ -171,21 +170,21 @@ def bluetoothWorker():
                     if None in latestImuData:
                         print("latestImuData contained None in Port {}".format(latestImuData.find(None)))
                     else:
-                        recordedMovement.append(latestImuData)
+                        recordedMovement.append(latestImuData.copy())
 
                 # TODO: Send all latestImuData over TCP
                 if (tcpConnection is not None and i == 0):
                     sendTCP(msg)
 
-                    sendCounter[i] += 1
-                    if sendCounter[i] >= 50:
+                    sendCounters[i] += 1
+                    if sendCounters[i] >= 100:
                         print('Sent {} IMU Packets from Port {}'.format(sendCounters[i], i))
-                        sendCounter[i] = 0
+                        sendCounters[i] = 0
                 else:
                     pass
 
                 recvCounters[i] += 1
-                if recvCounters[i] >= 50:
+                if recvCounters[i] >= 100:
                     print('Got {} IMU Packets from Port {}'.format(recvCounters[i], i))
                     recvCounters[i] = 0
 
@@ -200,7 +199,7 @@ def bluetoothWorker():
             else:
                 continue
 
-        time.sleep(0.001)
+        time.sleep(0.015)
 
     print("Bluetooth Worker Quiting...")
     threadQuit()
@@ -236,7 +235,7 @@ def testLrasWorker():
 
 
 def lraControlWorker():
-    global tcpConnection, latestImuData
+    global tcpConnection, latestImuData, recordedMovement, recording, exercising
 
     lastLraMsgs = [None] * len(ports)
 

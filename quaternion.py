@@ -9,8 +9,8 @@ class Quat:
             self.w = math.cos(theta/2)
             s = math.sin(theta/2)
             self.x = a[0]*s
-            self.y = a[0]*s
-            self.z = a[0]*s
+            self.y = a[1]*s
+            self.z = a[2]*s
         elif(hasattr(w, '__len__') and len(w) == 4):
             self.w = w[0]
             self.x = w[1]

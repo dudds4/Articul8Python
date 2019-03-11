@@ -21,7 +21,6 @@ recordedMovement = Movement()
 
 latestImuData = [None] * len(ports)
 
-LRA_WORKER_PERIOD = 0.1
 
 def sendTCP(msg):
     global tcpConnection, tcpLock
@@ -206,30 +205,32 @@ def bluetoothWorker():
     threadQuit()
 
 
-def testLrasWorker():
+LRA_WORKER_PERIOD = 0.5
+def testLraSpinWorker():
     global tcpConnection
 
-    lraId = 0
-
+    count = 0
     while(checkThreadFlag()):
-        intensities = [int(0)] * NUM_LRAS
-        intensities[lraId] = 127
-        newLraMsg = LRACmdMsg(intensities).toBytes()
+        # newLraMsg = LRACmdMsg(True, 0.5).toBytes()
+        if (count < 10):
+            newLraMsg = LRACmdMsg(True, -0.5).toBytes()
+        elif (count < 20):
+            newLraMsg = LRACmdMsg(False, [0]*numLRAs[i]).toBytes()
+        elif (count < 30):
+            newLraMsg = LRACmdMsg(True, 0.5).toBytes()
+        else:
+            newLraMsg = LRACmdMsg(False, [0]*numLRAs[i]).toBytes()
 
-        for i, port in enumerate(ports):
-            if(not ser_isOpen(i)):
-                ser_open(port)
-
-            ser_write(newLraMsg, i)
+        if(True):        
+            print("Writing... {}".format(count))
+            for i, port in enumerate(ports):
+                ser_write(newLraMsg, i)
 
         if (tcpConnection is not None):
             sendTCP(newLraMsg)
 
-        time.sleep(LRA_WORKER_PERIOD * 3)
-
-        lraId += 1
-        if (lraId >= NUM_LRAS):
-            lraId = 0
+        time.sleep(LRA_WORKER_PERIOD)
+        count += 1
 
     print("LRA Command Worker Quiting...")
     threadQuit()
@@ -238,7 +239,7 @@ def testLrasWorker():
 def lraControlWorker():
     global tcpConnection, latestImuData, baselineImuData, recordedMovement, recording, exercising
 
-    offLraMsgs  = [LRACmdMsg([0] * numLRAs[i]).toBytes() for i in range(len(ports))]
+    offLraMsgs  = [LRACmdMsg(False, [0] * numLRAs[i]).toBytes() for i in range(len(ports))]
     lastLraMsgs = [None] * len(ports)
 
     while(checkThreadFlag()):

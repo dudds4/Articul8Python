@@ -54,7 +54,7 @@ class BodyState:
             for lra in lraInterpolation:
                 intensities[lra['idx']] = int(min(127, mag * lra['portion']))
 
-            lraMsg = LRACmdMsg(intensities).toBytes()
+            lraMsg = LRACmdMsg(False, intensities).toBytes()
             lraMsgs.append(lraMsg)
 
         return lraMsgs

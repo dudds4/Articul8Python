@@ -21,9 +21,7 @@ recordedMovement = Movement()
 
 latestImuData = [None] * len(ports)
 
-LRA_WORKER_PERIOD = 0.33
-MIN_REC_MOVEMENT = 5
-VIBRATE_THRESHOLD_DIST = 0.087 # 5 deg in rad
+LRA_WORKER_PERIOD = 0.1
 
 def sendTCP(msg):
     global tcpConnection, tcpLock
@@ -92,7 +90,7 @@ def tcpServerWorker():
                     elif (cmd[POS_DATA+1] == START_EXERCISE):
                         if not(exercising):
                             exercising = True
-                            baselineImuData = latestImuData
+                            baselineImuData = latestImuData.copy()
                             print("Starting Exercise!")
 
                     elif (cmd[POS_DATA+1] == STOP_EXERCISE):

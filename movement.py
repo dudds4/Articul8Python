@@ -1,4 +1,5 @@
 
+from lra_helper import *
 from msg_defs import *
 from articul8_comm import *
 from quaternion import *
@@ -20,71 +21,43 @@ class BodyState:
         self.imuMsgs = imuMsgs
         self.rpyAngles = rpyAngles
 
-    # TODO: Determine most accurate distance metric
+    # TODO: Determine best distance metric for selection of target state
     def dist(self, otherBodyState):
         sumsq = 0
         for rpy, otherRpy in zip(self.rpyAngles, otherBodyState.rpyAngles):
             sumsq += sum([(otherAngle - angle)**2 for angle, otherAngle in zip(rpy, otherRpy)])
         return sumsq
 
+    # Correct yaw only
     def errorToLraMsgs(self, otherBodyState):
-
-        lraMsgs = []
 
         if (otherBodyState.numBands != self.numBands):
             print('Wrong number of bands!')
-            for band in range(self.numBands):
-                intensities = [0] * numLRAs[band]
-                lraMsg = LRACmdMsg(intensities).toBytes()
-                lraMsgs.append(lraMsg)
-            return lraMsgs
+            return None
 
-        else:
-            for band in range(self.numBands):
+        lraMsgs = []
 
-                thisGrav = quatToGravity(self.imuMsgs[band].quat)
-                magThisGrav = np.linalg.norm(thisGrav)
+        for band in range(self.numBands):
 
-                otherGrav = quatToGravity(otherBodyState.imuMsgs[band].quat)
-                magOtherGrav = np.linalg.norm(otherGrav)
+            intensities = [0] * numLRAs[band]
 
-                if (magOtherGrav == 0 or magThisGrav == 0):
-                    continue
+            rpyDiff = [self.rpyAngles[band][i] - otherBodyState.rpyAngles[band][i] for i in range(3)]
+            yawDiff = rpyDiff[2]
 
-                normDot = np.dot(thisGrav, otherGrav) / (magOtherGrav * magThisGrav)
-                dist = math.acos(np.clip(normDot, -1, 1))
+            mag = 6 * abs(yawDiff) * 180 / math.pi
+            angle = math.pi/2
+            if (yawDiff < 0):
+                angle = 3*math.pi/2
 
-                intensities = [0] * numLRAs[band]
+            lraInterpolation = interpolateAngle(angle, band)
 
-                if (dist >= VIBRATE_THRESHOLD_DIST):
-                    z_dist = otherGrav[2] - thisGrav[2]
-                    y_dist = -otherGrav[1] + thisGrav[1]
+            for lra in lraInterpolation:
+                intensities[lra['idx']] = int(min(127, mag * lra['portion']))
 
-                    mag = math.sqrt(y_dist**2 + z_dist**2)
-                    angle = math.atan2(y_dist, z_dist)
-                    if (angle < 0):
-                        angle += 2*math.pi
+            lraMsg = LRACmdMsg(intensities).toBytes()
+            lraMsgs.append(lraMsg)
 
-                    # Linearly interpolate magnitude between two adjacent LRAs
-                    angleSegment = 2*math.pi/numLRAs[band]
-
-                    idx1 = 0
-                    while ((idx1+1) * angleSegment < angle):
-                        idx1 += 1
-
-                    idx2 = (idx1 + 1) % numLRAs[band]
-
-                    portion2 = (angle - idx1 * angleSegment) / angleSegment
-                    portion1 = 1 - portion2
-
-                    intensities[idx1] = mag * portion1
-                    intensities[idx2] = mag * portion2
-                    intensities = [int(min(127, 600*elem)) for elem in intensities]
-
-                lraMsg = LRACmdMsg(intensities).toBytes()
-                lraMsgs.append(lraMsg)
-
-            return lraMsgs
+        return lraMsgs
 
     @staticmethod
     def fromIMU(imuMsgs, baselineImuMsgs):

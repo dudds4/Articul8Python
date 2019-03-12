@@ -75,7 +75,7 @@ class BodyState:
                 lraMsgs.append(lraMsg)
 
 
-            elif (abs(rollDiff) * 180 / math.pi > 5):
+            elif (abs(rollDiff) * 180 / math.pi > 12):
                 sign = 1.0
                 if (rollDiff < 0):
                     sign = -1.0

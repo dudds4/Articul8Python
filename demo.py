@@ -79,16 +79,21 @@ def main():
     lraControlThread = startThread(lraControlWorker)
 
     portIdxs = [i for i in range(len(ports))]
-    while(checkThreadFlag() and len(portIdxs)):
 
+    while(checkThreadFlag() and len(portIdxs)):
         msg = None
         while(checkThreadFlag() and (msg is None or ser_getFrequency(portIdxs[0]) < 30)):
             time.sleep(0.5)
             msg = ser_getLastPacket(portIdxs[0])
 
         if(checkThreadFlag()):
-            ser_startLogging(portIdxs[0])
+            print("port {} ready".format(portIdxs[0]))
             portIdxs = portIdxs[1:]
+
+    print("all ports ready?")
+    if(checkThreadFlag()):
+        for portIdx in range(len(ports)):
+            ser_startLogging(portIdx)
 
     while(checkThreadCount() > 0):
         time.sleep(1)

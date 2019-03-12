@@ -2,6 +2,9 @@ from analysis_tools import *
 from articul8_comm import *
 from articul8_logs import *
 import math
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def readIMUData(path="."):
     if not(os.path.isdir(path)):
@@ -131,6 +134,48 @@ kneePosition = [0, 0, 0]
 hipPosition = [0, 0, 0]
 # rot = Quat([1, 0, 0], math.pi)
 
+def turnToX(v):
+    x = v[0]
+    y = v[1]
+    m = math.sqrt(x*x+y*y)
+    th = math.atan2(y,x)
+
+    if(th > math.pi / 2):
+        th = th - math.pi
+
+    if(th < -math.pi / 2):
+        th = th + math.pi
+
+    q = Quat([0, 0, 1], -th)
+    return q
+
+def set_axes_equal(ax):
+    '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
+    cubes as cubes, etc..  This is one possible solution to Matplotlib's
+    ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
+
+    Input
+      ax: a matplotlib axis, e.g., as output from plt.gca().
+    '''
+
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+
+    # The plot bounding box is a sphere in the sense of the infinity
+    # norm, hence I call half the max range the plot radius.
+    plot_radius = 0.5*max([x_range, y_range, z_range])
+
+    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
 
 def testGravity(imuDataSets):
@@ -143,20 +188,60 @@ def testGravity(imuDataSets):
     # gravities = [quatToGravity(quat) for quat in quats]
     # rotated = [ q.rotate(v) for q,v in zip(quats, gravities) ]
 
-    i = 0
-    while(i < N):
-        shankQuat = Quat(shankImus[i].quat)
-        thighQuat = Quat(thighImus[i].quat)
+    firstShank = Quat(shankImus[0].quat)
+    firstThigh = Quat(thighImus[0].quat)
+
+    rotQs = turnToX(firstShank.rotate([1, 0, 0]))
+    rotQt = turnToX(rotQs.rotate(firstThigh.rotate([1, 0, 0])))
+    rotQt = Quat([0, 0, 1], math.pi) * (rotQt)
+
+    shankQuats = [Quat(x.quat) for x in shankImus]
+    thighQuats = [Quat(x.quat) for x in thighImus]
+
+    kneePositions = [  rotQs.rotate(sq.rotate([1, 0, 0])) for sq in shankQuats]
+    kneeHips = [  rotQs.rotate(tq.rotate([1, 0, 0])) for tq in thighQuats]
+    kneeHips = [ rotQt.rotate(kh) for kh in kneeHips ]
+
+    kneePositions = np.array(kneePositions)
+    kneeHips = np.array(kneeHips)
+    hipPositions = np.add(kneePositions, kneeHips)
+
+    s = range(N)
+
+    fig = plt.figure()
+    ax = fig.gca(projection="3d")
+    ax.view_init(azim=30)
+    ax.set_aspect('equal')
+    
+    ax.scatter(kneePositions[:,0], kneePositions[:,1], kneePositions[:,2] )
+    ax.scatter(hipPositions[:,0], hipPositions[:,1], hipPositions[:,2] )
+    
+    ax.scatter(kneePositions[0,0], kneePositions[0,1], kneePositions[0,2], marker="x", s=128)
+    ax.scatter(hipPositions[0,0], hipPositions[0,1], hipPositions[0,2], marker="x", s=128)
+
+    set_axes_equal(ax)
+
+    plt.show()
+
+    # i = 0
+    # while(i < N):
+    #     shankQuat = Quat(shankImus[i].quat)
+    #     thighQuat = Quat(thighImus[i].quat)
         
-        kneePosition = shankQuat.rotate([1, 0, 0])
-        kneeHip = thighQuat.rotate([1, 0, 0])
+    #     kneePosition = shankQuat.rotate([1, 0, 0])
+    #     kneeHip = thighQuat.rotate([1, 0, 0])
 
-        kneeHip = [round(a, 3) for a in kneeHip]
-        hipPosition = [round(a+b,3) for a,b in zip(kneePosition, kneeHip)]
-        kneePosition = [round(a,3) for a in kneePosition]
-        print("{}, {}".format(kneePosition, kneeHip))
+    #     rotQ = turnToX(kneePosition)
+    #     kneePosition = rotQ.rotate(kneePosition)
+    #     kneeHip = rotQ.rotate(kneeHip)
 
-        i += 10
+    #     kneeHip = [round(a, 3) for a in kneeHip]
+    #     hipPosition = [round(a+b,3) for a,b in zip(kneePosition, kneeHip)]
+    #     kneePosition = [round(a,3) for a in kneePosition]
+
+    #     print("{}, {}".format(kneePosition, hipPosition))
+
+    #     i += 5
 
 
 def main():

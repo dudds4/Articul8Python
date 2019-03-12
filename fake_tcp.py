@@ -151,7 +151,10 @@ def main():
         print("Please supply exactly 1 folder containing log files")
     else:
         imuDataSets = readIMUData(sys.argv[1])
-        clockOutOverTcp(imuDataSets)
+        if(imuDataSets is not None):
+            clockOutOverTcp(imuDataSets)
+        else:
+            print("folder seems wrong")
 
 
 

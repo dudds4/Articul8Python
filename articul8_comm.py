@@ -10,10 +10,9 @@ global articul8
 initialized = False
 
 portNicknames = ["thigh", "shank"]
-numLRAs = [8, 6]
 
-ports = ["COM6"]
-# ports = ["COM6", "COM9"]
+numLRAs = [8, 6]
+ports = ["COM6", "COM5"]
 if (platform.system().lower() == 'darwin'):
     ports = ["/dev/cu.Articul8Board3-SerialPo", "/dev/cu.Articul8Board1-SerialPo"]
 

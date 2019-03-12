@@ -184,7 +184,7 @@ def bluetoothWorker():
                         recordedMovement.update(latestImuData)
 
                 if (tcpConnection is not None):
-                    sendTCP(buildQuatMsgTCP(int(i / 2), (i+1) % 2, parsed_message.quat))
+                    sendTCP(buildQuatMsgTCP(int(i/2), (i+1)%2, parsed_message.quat))
 
                     sendCounters[i] += 1
                     if sendCounters[i] >= 100:

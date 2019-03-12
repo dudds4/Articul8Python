@@ -287,13 +287,14 @@ def buildLRAMsgTCP(left, upper, lraMsg):
     u = 1 if upper else 0
     msg = struct.pack('B', SOP) + struct.pack('B', GUI_LRA_MSG) +  struct.pack('B', l) + struct.pack('B', u)
 
-    if (lraMsg.isSpin):
-        msg += struct.pack('B', LRA_SPIN)
-        msg += struct.pack('f', lraMsg.spinFreq)
-    else:
-        msg += struct.pack('B', LRA_NO_SPIN)
-        for i in range(len(lraMsg.intensities)):
-            msg += struct.pack('B', int(lraMsg.intensities[i]))
+    msg += lraMsg[2:14]
+    # if (lraMsg.isSpin):
+    #     msg += struct.pack('B', LRA_SPIN)
+    #     msg += struct.pack('f', lraMsg.spinFreq)
+    # else:
+    #     msg += struct.pack('B', LRA_NO_SPIN)
+    #     for i in range(len(lraMsg.intensities)):
+    #         msg += struct.pack('B', int(lraMsg.intensities[i]))
     
     while(len(msg) < PACKET_SIZE):
         msg = msg + struct.pack('B', 0)

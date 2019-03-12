@@ -79,6 +79,7 @@ class Movement:
     def __init__(self):
         self.baseImuMsgs = None
         self.stateVector = []
+        self.lastIdx = 0
 
     def update(self, imuMsgs):
         if self.baseImuMsgs is None:
@@ -90,15 +91,33 @@ class Movement:
         minDist = math.inf
         nearestState = None
         nearestIdx = None
+        
+        nStates = len(self.stateVector)
+        nChecks = nStates/4
 
-        for i, state in enumerate(self.stateVector):
+        statesToCheck = []
+        checkStart = self.lastIdx
+
+        if(checkStart + nChecks < nStates):
+            statesToCheck = self.stateVector[checkStart:(checkStart+nChecks)]
+        else:
+            statesToCheck = self.stateVector[checkStart:]
+            nLeft = nChecks - len(statesToCheck)
+            statesToCheck += self.stateVector[:nLeft]
+
+        for i, state in enumerate(statesToCheck):
             dist = bodyState.dist(state)
             if (dist < minDist):
                 nearestState = state
                 minDist = dist
                 nearestIdx = i
 
+        self.lastIdx = (checkStart + nearestIdx) % nStates
+        # print(self.lastIdx)
         return nearestState
+
+    def reset(self):
+        self.lastIdx = 0
 
     def getLraMsgs(self, currIMU, baselineIMU):
         currBodyState = BodyState.fromIMU(currIMU, baselineIMU)

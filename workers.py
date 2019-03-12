@@ -68,81 +68,85 @@ def tcpServerWorker():
     s.settimeout(0.2)
     tcpConnection = None
 
-    while(tcpConnection == None and checkThreadFlag()):
-        try:
-            tcpConnection, addr = s.accept()
-            tcpConnection.settimeout(1)
-            print('TCP server connected on: {}'.format(addr))
+    while (checkThreadFlag()):
 
-        except Exception:
-            pass
-
-    try:
-        connectionFailed = False
-        sendCounter = 0
-
-        while (not(connectionFailed) and checkThreadFlag()):
-            # Check if any commands are being sent
+        while(tcpConnection == None and checkThreadFlag()):
             try:
-                cmd = tcpConnection.recv(PACKET_SIZE)
-                if(cmd is None):
-                    continue
+                tcpConnection, addr = s.accept()
+                tcpConnection.settimeout(1)
+                print('TCP server connected on: {}'.format(addr))
 
-                if (cmd[POS_SOP] == SOP and cmd[POS_DATA] == GUI_CONTROL_MSG):
-
-                    if (cmd[POS_DATA+1] == START_RECORDING):
-                        if not(recording):
-                            recording = True
-                            recordedMovement = Movement()
-                            print("Starting Recording!")
-
-                    elif (cmd[POS_DATA+1] == STOP_RECORDING):
-                        if (recording):
-                            recording = False
-                            print("Ending Recording!")
-                            print("Recording size: {}".format(len(recordedMovement.stateVector)))
-
-                    elif (cmd[POS_DATA+1] == START_EXERCISE):
-                        if not(exercising):
-                            exercising = True
-                            baselineImuData = latestImuData.copy()
-                            print("Starting Exercise!")
-
-                    elif (cmd[POS_DATA+1] == STOP_EXERCISE):
-                        if (exercising):
-                            exercising = False
-                            print("Ending Exercise!")
-
-                    elif (cmd[POS_DATA+1] == PRINT_RECORDING):
-                        print(recordedMovement)
-
-                    elif (cmd[POS_DATA+1] == REPORT_OFFSETS):
-                        for i, port in enumerate(ports):
-                            sendSerial(OffsetMsg.toBytes(), i)
-
-                    elif (cmd[POS_DATA+1] == CALIBRATE):
-                        msg = CalibrateMsg(cmd[POS_DATA+1])
-                        for i, port in enumerate(ports):
-                            sendSerial(msg.toBytes(), i)
-
-                    elif (cmd[POS_DATA+1] == PRINT_BATTERY):
-                        for i, port in enumerate(ports):
-                            sendSerial(BatteryReportMsg.toBytes(), i)
-
-                    else:
-                        print("Received invalid command: {}".format(cmd))
-                        connectionFailed = True
-
-            except Exception as e:
+            except Exception:
                 pass
-    finally:
-        if tcpConnection is not None:
-            print('Closing socket connection')
-            tcpConnection.close()
-        else:
-            print('No socket connection')
 
-        tcpConnection = None
+        try:
+            connectionFailed = False
+            sendCounter = 0
+
+            while (not(connectionFailed) and checkThreadFlag()):
+                # Check if any commands are being sent
+                try:
+                    cmd = tcpConnection.recv(PACKET_SIZE)
+                    if(cmd is None):
+                        continue
+
+                    if (cmd[POS_SOP] == SOP and cmd[POS_DATA] == GUI_CONTROL_MSG):
+
+                        if (cmd[POS_DATA+1] == START_RECORDING):
+                            if not(recording):
+                                recording = True
+                                recordedMovement = Movement()
+                                print("Starting Recording!")
+
+                        elif (cmd[POS_DATA+1] == STOP_RECORDING):
+                            if (recording):
+                                recording = False
+                                print("Ending Recording!")
+                                print("Recording size: {}".format(len(recordedMovement.stateVector)))
+
+                        elif (cmd[POS_DATA+1] == START_EXERCISE):
+                            if not(exercising):
+                                exercising = True
+                                baselineImuData = latestImuData.copy()
+                                print("Starting Exercise!")
+
+                        elif (cmd[POS_DATA+1] == STOP_EXERCISE):
+                            if (exercising):
+                                exercising = False
+                                print("Ending Exercise!")
+
+                        elif (cmd[POS_DATA+1] == PRINT_RECORDING):
+                            print(recordedMovement)
+
+                        elif (cmd[POS_DATA+1] == REPORT_OFFSETS):
+                            for i, port in enumerate(ports):
+                                sendSerial(OffsetMsg.toBytes(), i)
+
+                        elif (cmd[POS_DATA+1] == CALIBRATE):
+                            msg = CalibrateMsg(cmd[POS_DATA+1])
+                            for i, port in enumerate(ports):
+                                sendSerial(msg.toBytes(), i)
+
+                        elif (cmd[POS_DATA+1] == PRINT_BATTERY):
+                            for i, port in enumerate(ports):
+                                sendSerial(BatteryReportMsg.toBytes(), i)
+
+                        else:
+                            print("Received invalid command: {}".format(cmd))
+                            connectionFailed = True
+
+                except Exception as e:
+                    if (str(e) != 'timed out'):
+                        connectionFailed = True
+        finally:
+            if tcpConnection is not None:
+                print('Closing socket connection')
+                tcpConnection.close()
+            else:
+                print('No socket connection')
+
+            tcpConnection = None
+            print('Restarting TCP server')
 
     print('TCP Server Worker Quitting')
     threadQuit()

@@ -123,7 +123,7 @@ class Movement:
         nearestIdx = None
         
         nStates = len(self.stateVector)
-        nChecks = nStates/4
+        nChecks = int(nStates/4)
 
         statesToCheck = []
         checkStart = self.lastIdx

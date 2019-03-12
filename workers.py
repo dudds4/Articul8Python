@@ -36,7 +36,7 @@ def sendSerial(msg, i):
     except:
         pass
 
-    serialLock[i].release()
+    serialLocks[i].release()
 
 def sendTCP(msg):
     global tcpConnection, tcpLock

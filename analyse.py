@@ -1,6 +1,7 @@
 from analysis_tools import *
 from articul8_comm import *
 from articul8_logs import *
+import math
 
 def readIMUData(path="."):
     if not(os.path.isdir(path)):
@@ -86,7 +87,6 @@ def plotJointAngles(imuDataSets, title=''):
 
         globalQuats = [Quat(IMUSample.quat) for IMUSample in imuDataSet]
         globalQuatDiffs = [initialQuat * quat.conj() for quat in globalQuats]
-
         localQuatDiff = [ [globalQuatDiff[0]] + globalQuat.conj().rotate(globalQuatDiff[1:]) for globalQuat, globalQuatDiff in zip(globalQuats, globalQuatDiffs)]
 
         roll =  [180/math.pi*quatTo3Angle(q)[0] for q in localQuatDiff]
@@ -120,17 +120,58 @@ def plotGravity(imuDataSets, title=''):
     plt.title(title)
     plt.show()
 
+# def getGravity(qI):
+
+#     data[0] = (qI[1] * qI[3] - qI[0] * qI[2]) / 16384;
+#     data[1] = (qI[0] * qI[1] + qI[2] * qI[3]) / 16384;
+#     data[2] = (qI[0] * qI[0] - qI[1] * qI[1] - qI[2] * qI[2] + qI[3] * qI[3]) / (2 * 16384);
+
+anklePosition = [0, 0, 0]
+kneePosition = [0, 0, 0]
+hipPosition = [0, 0, 0]
+# rot = Quat([1, 0, 0], math.pi)
+
+
+
+def testGravity(imuDataSets):
+
+    N = min(len(imuDataSets[0]), len(imuDataSets[1]))
+    shankImus = imuDataSets[0][0:N]
+    thighImus = imuDataSets[1][0:N]
+
+    # quats = [Quat(imu.quat) for imu in imus]
+    # gravities = [quatToGravity(quat) for quat in quats]
+    # rotated = [ q.rotate(v) for q,v in zip(quats, gravities) ]
+
+    i = 0
+    while(i < N):
+        shankQuat = Quat(shankImus[i].quat)
+        thighQuat = Quat(thighImus[i].quat)
+        
+        kneePosition = shankQuat.rotate([1, 0, 0])
+        kneeHip = thighQuat.rotate([1, 0, 0])
+
+        kneeHip = [round(a, 3) for a in kneeHip]
+        hipPosition = [round(a+b,3) for a,b in zip(kneePosition, kneeHip)]
+        kneePosition = [round(a,3) for a in kneePosition]
+        print("{}, {}".format(kneePosition, kneeHip))
+
+        i += 10
+
+
 def main():
     loadCSerial()
 
     if(len(sys.argv) < 2):
         print("Please supply a folder containing log files")
     else:
-        for i in range(1, len(sys.argv)):
+        for i in range(1, len(sys.argv)):   
             imuDataSets = readIMUData(sys.argv[i])
-            plotGravity(imuDataSets, sys.argv[i])
+            # plotGravity(imuDataSets, sys.argv[i])
             # plotKneeAngles(imuDataSets, sys.argv[i])
             # plotQuaternia(imuDataSets)
+            # plotJointAngles(imuDataSets, sys.argv[i])
+            testGravity(imuDataSets)
 
 if __name__ == '__main__':
     main()

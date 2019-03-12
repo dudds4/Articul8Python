@@ -92,6 +92,8 @@ def clockOutOverTcp(imuMsgLists):
     for i in range(1,nIMUs):
         nMsgs = min(nMsgs, len(imuMsgLists[i]))
 
+    print(nMsgs)
+
     global tcpConnection, s
     time.sleep(1)
     
@@ -123,7 +125,11 @@ def clockOutOverTcp(imuMsgLists):
 
             sendCounter += 1
             sTime = (nextTime - lastTime)/1000.0
-            time.sleep(sTime)
+            if(sTime > 0):
+                time.sleep(sTime)
+            else:
+                time.sleep(0.03)
+
             lastTime = nextTime
 
     except Exception as e:

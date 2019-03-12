@@ -34,7 +34,7 @@ def readIMUData(path="."):
     return imuMsgLists
 
 
-def plotQuaternia(imuDataSets):
+def plotQuaternia(imuDataSets, title=''):
     line_types = ['-', '--', '-.', ':', 'o', 's']
 
     for i, imuDataSet in enumerate(imuDataSets):
@@ -50,6 +50,7 @@ def plotQuaternia(imuDataSets):
         plt.plot(j, z, 'k'+line_types[i])
 
     plt.legend(['w','x','y','z'])
+    plt.title(title)
     plt.show()
 
 def plotKneeAngles(imuDataSets, title=''):
@@ -102,6 +103,23 @@ def plotJointAngles(imuDataSets, title=''):
     plt.title(title)
     plt.show()
 
+def plotGravity(imuDataSets, title=''):
+    line_types = ['-', '--', '-.', ':', 'o', 's']
+
+    for i, imuDataSet in enumerate(imuDataSets):
+        j = range(len(imuDataSet))
+        x = [quatToGravity(msg.quat)[0] for msg in imuDataSet]
+        y = [quatToGravity(msg.quat)[1] for msg in imuDataSet]
+        z = [quatToGravity(msg.quat)[2] for msg in imuDataSet]
+
+        plt.plot(j, x, 'r'+line_types[i])
+        plt.plot(j, y, 'g'+line_types[i])
+        plt.plot(j, z, 'b'+line_types[i])
+
+    plt.legend(['x','y','z'])
+    plt.title(title)
+    plt.show()
+
 def main():
     loadCSerial()
 
@@ -110,8 +128,9 @@ def main():
     else:
         for i in range(1, len(sys.argv)):
             imuDataSets = readIMUData(sys.argv[i])
+            plotGravity(imuDataSets, sys.argv[i])
             # plotKneeAngles(imuDataSets, sys.argv[i])
-            plotQuaternia(imuDataSets)
+            # plotQuaternia(imuDataSets)
 
 if __name__ == '__main__':
     main()

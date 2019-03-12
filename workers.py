@@ -13,7 +13,7 @@ import numpy as np
 tcpConnection = None
 tcpLock = threading.Lock()
 
-serialLock = threading.Lock()
+serialLocks = [threading.Lock() for i in range(len(ports))]
 
 exercising = False
 baselineImuData = [None] * len(ports)
@@ -24,8 +24,8 @@ recordedMovement = Movement()
 latestImuData = [None] * len(ports)
 
 def sendSerial(msg, i):
-    global serialLock
-    serialLock.acquire()
+    global serialLocks
+    serialLocks[i].acquire()
 
     try:
         if(not ser_isOpen(i)):
@@ -36,7 +36,7 @@ def sendSerial(msg, i):
     except:
         pass
 
-    serialLock.release()
+    serialLock[i].release()
 
 def sendTCP(msg):
     global tcpConnection, tcpLock

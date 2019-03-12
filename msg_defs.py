@@ -22,6 +22,9 @@ OFFSET_REPORT_MSG = 8
 BATTERY_REPORT_MSG = 9
 NUM_MSG_TYPES = 10
 
+LRA_NO_SPIN = 0
+LRA_SPIN = 1
+
 # streaming states
 
 DEFAULT_STATE = 0
@@ -106,14 +109,28 @@ class CalibrateMsg:
         return wrapDataInPacket(data)
 
 class LRACmdMsg:
-    def __init__(self, intensities):
-        # TODO: Check values are integers <127
-        self.intensities = intensities
+    def __init__(self, isSpin, cmdValue):
+        self.isSpin = isSpin
+        if (isSpin):
+            #TODO: Check spinFreq is between -10 and 10
+            cmdValue = float(cmdValue)
+            if (type(cmdValue) is float):
+                self.spinFreq = cmdValue
+        else:
+            # TODO: Check intensities are integers <127
+            if (type(cmdValue) is list):
+                self.intensities = cmdValue
 
     def toBytes(self):
         data = struct.pack('B', LRA_CONTROL_MSG)
-        for i in range(len(self.intensities)):
-            data += struct.pack('B', int(self.intensities[i]))
+        if (self.isSpin):
+            data += struct.pack('B', LRA_SPIN)
+            data += struct.pack('f', self.spinFreq)
+        else:
+            data += struct.pack('B', LRA_NO_SPIN)
+            for i in range(len(self.intensities)):
+                data += struct.pack('B', int(self.intensities[i]))
+
         return wrapDataInPacket(data)
 
     @staticmethod

@@ -41,6 +41,9 @@ CALIBRATE = 5
 REPORT_OFFSETS = 6
 PRINT_BATTERY = 7
 
+GUI_QUAT_MSG = 100
+GUI_LRA_MSG = 101
+
 import struct
 import binascii
 
@@ -265,3 +268,34 @@ class BatteryReportMsg:
 
     def __str__(self):
         return "BATTERY: {} mV".format(self.battLevel)
+
+def buildQuatMsgTCP(left, upper, q):
+    l = 1 if left else 0
+    u = 1 if upper else 0
+    msg = struct.pack('B', SOP) + struct.pack('B', GUI_QUAT_MSG) +  struct.pack('B', l) + struct.pack('B', u)
+
+    for i in range(4):
+        msg = msg + struct.pack('f', q[i])
+    
+    while(len(msg) < PACKET_SIZE):
+        msg = msg + struct.pack('B', 0)
+
+    return msg
+
+def buildLRAMsgTCP(left, upper, lraMsg):
+    l = 1 if left else 0
+    u = 1 if upper else 0
+    msg = struct.pack('B', SOP) + struct.pack('B', GUI_LRA_MSG) +  struct.pack('B', l) + struct.pack('B', u)
+
+    if (lraMsg.isSpin):
+        msg += struct.pack('B', LRA_SPIN)
+        msg += struct.pack('f', lraMsg.spinFreq)
+    else:
+        msg += struct.pack('B', LRA_NO_SPIN)
+        for i in range(len(lraMsg.intensities)):
+            msg += struct.pack('B', int(lraMsg.intensities[i]))
+    
+    while(len(msg) < PACKET_SIZE):
+        msg = msg + struct.pack('B', 0)
+
+    return msg

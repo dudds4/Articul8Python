@@ -1,5 +1,6 @@
 
 from articul8_comm import numLRAs
+import math
 
 # Linearly interpolate magnitude between two adjacent LRAs
 def interpolateAngle(angle, bandId):

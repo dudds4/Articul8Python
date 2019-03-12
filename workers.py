@@ -120,10 +120,10 @@ def tcpServerWorker():
                         for i, port in enumerate(ports):
                             sendSerial(OffsetMsg.toBytes(), i)
 
-                    # elif (cmd[POS_DATA+1] == CALIBRATE_ACCEL or cmd[POS_DATA+1] == CALIBRATE_GYRO):
-                    #     msg = CalibrateMsg(cmd[POS_DATA+1])
-                    #     for i, port in enumerate(ports):
-                    #         sendSerial(msg.toBytes(), i)
+                    elif (cmd[POS_DATA+1] == CALIBRATE):
+                        msg = CalibrateMsg(cmd[POS_DATA+1])
+                        for i, port in enumerate(ports):
+                            sendSerial(msg.toBytes(), i)
 
                     elif (cmd[POS_DATA+1] == PRINT_BATTERY):
                         for i, port in enumerate(ports):

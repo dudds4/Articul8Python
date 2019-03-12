@@ -42,20 +42,50 @@ class BodyState:
             intensities = [0] * numLRAs[band]
 
             rpyDiff = [self.rpyAngles[band][i] - otherBodyState.rpyAngles[band][i] for i in range(3)]
+            rollDiff = rpyDiff[0]
+            pitchDiff = rpyDiff[1]
             yawDiff = rpyDiff[2]
 
-            mag = 6 * abs(yawDiff) * 180 / math.pi
-            angle = math.pi/2
-            if (yawDiff < 0):
-                angle = 3*math.pi/2
+            if (abs(yawDiff) > abs(rollDiff) and abs(yawDiff) > abs(pitchDiff)):
+                mag = 6 * abs(yawDiff) * 180 / math.pi
+                angle = math.pi/2
+                if (yawDiff < 0):
+                    angle = 3*math.pi/2
 
-            lraInterpolation = interpolateAngle(angle, band)
+                lraInterpolation = interpolateAngle(angle, band)
 
-            for lra in lraInterpolation:
-                intensities[lra['idx']] = int(min(127, mag * lra['portion']))
+                for lra in lraInterpolation:
+                    intensities[lra['idx']] = int(min(127, mag * lra['portion']))
 
-            lraMsg = LRACmdMsg(False, intensities).toBytes()
-            lraMsgs.append(lraMsg)
+                lraMsg = LRACmdMsg(False, intensities).toBytes()
+                lraMsgs.append(lraMsg)
+
+            elif (abs(pitchDiff) > abs(rollDiff)):
+                mag = 8 * abs(pitchDiff) * 180 / math.pi
+                angle = 0
+                if (pitchDiff < 0):
+                    angle = math.pi
+
+                lraInterpolation = interpolateAngle(angle, band)
+
+                for lra in lraInterpolation:
+                    intensities[lra['idx']] = int(min(127, mag * lra['portion']))
+
+                lraMsg = LRACmdMsg(False, intensities).toBytes()
+                lraMsgs.append(lraMsg)
+
+
+            elif (abs(rollDiff) * 180 / math.pi > 5):
+                sign = 1.0
+                if (rollDiff < 0):
+                    sign = -1.0
+
+                lraMsg = LRACmdMsg(True, sign*0.8).toBytes()
+                lraMsgs.append(lraMsg)
+
+            else:
+                lraMsg = LRACmdMsg(False, intensities).toBytes()
+                lraMsgs.append(lraMsg)
 
         return lraMsgs
 

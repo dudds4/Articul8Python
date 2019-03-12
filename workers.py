@@ -183,9 +183,8 @@ def bluetoothWorker():
                     else:
                         recordedMovement.update(latestImuData)
 
-                # TODO: Send all latestImuData over TCP
-                if (tcpConnection is not None and i == 0):
-                    sendTCP(msg)
+                if (tcpConnection is not None):
+                    sendTCP(buildQuatMsgTCP(int(i / 2), i % 2, parsed_message.quat))
 
                     sendCounters[i] += 1
                     if sendCounters[i] >= 100:
@@ -237,7 +236,7 @@ def testLraSpinWorker():
             sendSerial(newLraMsg, i)
 
         if (tcpConnection is not None):
-            sendTCP(newLraMsg)
+            sendTCP(buildLRAMsgTCP(int(i/2), i%2, newLraMsg))
 
         time.sleep(LRA_WORKER_PERIOD)
         count += 1
@@ -267,8 +266,8 @@ def lraControlWorker():
                 lastLraMsgs[i] = newLraMsgs[i]
 
                 # TODO: Send all LRAs over TCP
-                if (tcpConnection is not None and i == 0):
-                    sendTCP(newLraMsgs[i])
+                if (tcpConnection is not None):
+                    sendTCP(buildLRAMsgTCP(int(i/2), i%2, newLraMsgs[i]))
 
         time.sleep(LRA_WORKER_PERIOD)
 

@@ -13,6 +13,8 @@ import numpy as np
 tcpConnection = None
 tcpLock = threading.Lock()
 
+serialLock = threading.Lock()
+
 exercising = False
 baselineImuData = [None] * len(ports)
 
@@ -21,6 +23,20 @@ recordedMovement = Movement()
 
 latestImuData = [None] * len(ports)
 
+def sendSerial(msg, i):
+    global serialLock
+    serialLock.acquire()
+
+    try:
+        if(not ser_isOpen(i)):
+            ser_open(ports[i])
+
+        ser_write(msg, i)
+
+    except:
+        pass
+
+    serialLock.release()
 
 def sendTCP(msg):
     global tcpConnection, tcpLock
@@ -102,25 +118,16 @@ def tcpServerWorker():
 
                     elif (cmd[POS_DATA+1] == REPORT_OFFSETS):
                         for i, port in enumerate(ports):
-                            if(not ser_isOpen()):
-                                ser_open(port)
+                            sendSerial(OffsetMsg.toBytes(), i)
 
-                            ser_write(OffsetMsg.toBytes(), i)
-
-                    elif (cmd[POS_DATA+1] == CALIBRATE_ACCEL or cmd[POS_DATA+1] == CALIBRATE_GYRO):
-                        msg = CalibrateMsg(cmd[POS_DATA+1])
-                        for i, port in enumerate(ports):
-                            if(not ser_isOpen()):
-                                ser_open(port)
-
-                            ser_write(msg.toBytes())
+                    # elif (cmd[POS_DATA+1] == CALIBRATE_ACCEL or cmd[POS_DATA+1] == CALIBRATE_GYRO):
+                    #     msg = CalibrateMsg(cmd[POS_DATA+1])
+                    #     for i, port in enumerate(ports):
+                    #         sendSerial(msg.toBytes(), i)
 
                     elif (cmd[POS_DATA+1] == PRINT_BATTERY):
                         for i, port in enumerate(ports):
-                            if(not ser_isOpen()):
-                                ser_open(port)
-
-                            ser_write(BatteryReportMsg.toBytes(), i)
+                            sendSerial(BatteryReportMsg.toBytes(), i)
 
                     else:
                         print("Received invalid command: {}".format(cmd))
@@ -221,10 +228,9 @@ def testLraSpinWorker():
         else:
             newLraMsg = LRACmdMsg(False, [0]*numLRAs[i]).toBytes()
 
-        if(True):        
-            print("Writing... {}".format(count))
-            for i, port in enumerate(ports):
-                ser_write(newLraMsg, i)
+        print("Writing... {}".format(count))
+        for i, port in enumerate(ports):
+            sendSerial(newLraMsg, i)
 
         if (tcpConnection is not None):
             sendTCP(newLraMsg)
@@ -252,10 +258,8 @@ def lraControlWorker():
         for i, port in enumerate(ports):
 
             if (newLraMsgs[i] != lastLraMsgs[i]):
-                if(not ser_isOpen(i)):
-                    ser_open(port)
+                sendSerial(newLraMsgs[i], i)
 
-                ser_write(newLraMsgs[i], i)
                 lastLraMsgs[i] = newLraMsgs[i]
 
                 # TODO: Send all LRAs over TCP
@@ -276,10 +280,7 @@ def keepAliveWorker():
         msg = StreamMsg(20)    # Set IMU streaming period (in ms)
         
         for i, port in enumerate(ports):
-            if(not ser_isOpen(i)):
-                ser_open(port)
-
-            ser_write(msg.toBytes(), i)
+            sendSerial(msg.toBytes(), i)
         
         time.sleep(1)
 

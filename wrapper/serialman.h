@@ -84,13 +84,27 @@ struct SerialMan : Periodic<SerialMan>
 		      // Populate buffer with first complete BT packet
 		      if (cb.readPacket(lastpacket))
 		      {
+                if(lastpacket[POS_TYPE] == 10)
+                {
+					GUARD(myMutex);
+					serial->write(lastpacket, PACKET_SIZE);
+                	std::cout << "Received a test packet\n";
+
+                	for(int i = 0; i < PACKET_SIZE; ++i)
+                		std::cout << (int) lastpacket[i] << " ";
+                	std::cout << std::endl;
+                }
+
 		      	packetId++;
 	      		computeFrequency();
 
                 if(logging)
                 	logWrite.writePacket(lastpacket, PACKET_SIZE);
+
 		      	// do something more
 		        // std::cout << "Received BT packet " << packetId << "\n";
+
+                // this is just for round trip testing
 		      }
 		      break;
 
@@ -129,10 +143,13 @@ struct SerialMan : Periodic<SerialMan>
 
     		cb.write(linbuf, nRead);
     		int result;
-    		// do {
+
+    		do {
+			
 			 	result = cb.findPacket();
     			handleParseResult(result);
-    		// } while(result == BUFFER_SUCCESS);
+    		
+    		} while(result == BUFFER_SUCCESS);
 
     		// conditionally clear the circ buffer
     		// if(clear) { cb.read(linbuf, cb.getSize()); }

@@ -2,6 +2,7 @@
 #define LEG_STATE_H
 
 #include <math.h>
+#include "helper_3dmath.h"
 
 #define BANDS_PER_LEG 2
 #define STATES_PER_BAND 3
@@ -38,11 +39,11 @@ struct LegState {
 
 	LegState(float _rpyAngles[NUM_STATES]) {
 		for (int i = 0; i < NUM_STATES; i++) {
-			rpyAngles[i] = _rpyAngles[i]
+			rpyAngles[i] = _rpyAngles[i];
 		}
 	}
 
-	float dist(const LegState& otherLegState) {
+	inline float dist(const LegState& otherLegState) const {
 		float sumsq = 0;
 		for (int i = 0; i < NUM_STATES; i++) {
 			sumsq += (rpyAngles[i] - otherLegState.rpyAngles[i])*(rpyAngles[i] - otherLegState.rpyAngles[i]);
@@ -74,32 +75,61 @@ struct LegState {
 	}
 
 
-	// david's code
-	float r1, p1, y1;
-	float r2, p2, y2;
-
-	inline LegState getDiff(const LegState& b)
+	inline LegState getDiff(const LegState& b) const
 	{
-		return {
-			.r1 = this->r1 - b.r1,
-			.p1 = this->p1 - b.p1,
-			.y1 = this->y1 - b.y1,
 
-			.r2 = this->r2 - b.r2,
-			.p2 = this->p2 - b.p2,
-			.y2 = this->y2 - b.y2,
+		float r[NUM_STATES];
+		for(int i = 0; i < NUM_STATES; ++i)
+		{
+			r[i] = this->rpyAngles[i] - b.rpyAngles[i];
 		}
-	}
 
-	inline float getDist(const LegState& b)
-	{
-		LegState diff = getDiff(b);
-
-		return 	diff.r1*diff.r1 + diff.p1*diff.p1 + diff.y1*diff.y1 +
-				diff.r2*diff.r2 + diff.p2*diff.p2 + diff.y2*diff.y2;
+		return LegState(r);
 	}
 
 
 };
+
+
+int getCurrentLegState(const std::vector<LegState> motion, const LegState& current, int start)
+{
+	float minDist = current.dist(motion.at(start));
+
+	int minIdx = start;
+
+	int nChecks = motion.size() / 5;
+	int s = motion.size();
+
+	float tmp;
+	int i;
+	for(i = start+1; i < nChecks && i < s; ++i)
+	{
+		tmp = current.dist(motion.at(i));
+		
+		if(tmp < minDist)
+		{
+			minDist = tmp;
+			minIdx = i;
+		}
+	}
+
+	// check if we need to loop around
+	if(i < nChecks)
+	{
+		nChecks -= i;
+		for(i = 0; i < nChecks; ++i)
+		{
+			tmp = current.dist(motion.at(i));
+			
+			if(tmp < minDist)
+			{
+				minDist = tmp;
+				minIdx = i;
+			}			
+		}
+	}
+
+	return minIdx;
+}
 
 #endif

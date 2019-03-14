@@ -56,7 +56,7 @@ class Quaternion {
             z = nz;
         }
 
-        Quaternion getProduct(Quaternion q) {
+        Quaternion getProduct(const Quaternion& q) const {
             // Quaternion multiplication is defined by:
             //     (Q1 * Q2).w = (w1w2 - x1x2 - y1y2 - z1z2)
             //     (Q1 * Q2).x = (w1x2 + x1w2 + y1z2 - z1y2)
@@ -69,18 +69,18 @@ class Quaternion {
                 w*q.z + x*q.y - y*q.x + z*q.w); // new z
         }
 
-        Quaternion getInverse()
+        Quaternion getInverse() const
         {
             auto q = Quaternion(w, -x, -y, -z);            
             q.normalize();
             return q;
         }
 
-        Quaternion getConjugate() {
+        Quaternion getConjugate() const {
             return Quaternion(w, -x, -y, -z);
         }
         
-        float getMagnitude() {
+        float getMagnitude() const {
             return sqrt(w*w + x*x + y*y + z*z);
         }
         
@@ -92,7 +92,7 @@ class Quaternion {
             z /= m;
         }
         
-        Quaternion getNormalized() {
+        Quaternion getNormalized() const {
             Quaternion r(w, x, y, z);
             r.normalize();
             return r;
@@ -214,6 +214,22 @@ class VectorFloat {
             x = p.x;
             y = p.y;
             z = p.z;
+        }
+
+        void rotate(Quaternion&& q)
+        {
+            Quaternion p(0, x, y, z);
+
+            // quaternion multiplication: q * p, stored back in p
+            p = q.getProduct(p);
+
+            // quaternion multiplication: p * conj(q), stored back in p
+            p = p.getProduct(q.getConjugate());
+
+            // p quaternion is now [0, x', y', z']
+            x = p.x;
+            y = p.y;
+            z = p.z;            
         }
 
         VectorFloat getRotated(Quaternion *q) {

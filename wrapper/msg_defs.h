@@ -14,6 +14,9 @@ typedef unsigned char uchar;
 
 #define SOP 253
 
+#define LRA_NO_SPIN 0
+#define LRA_SPIN 1
+
 // Packets with type NONE are considered invalid Packets
 enum PacketType {
   NONE = 0,

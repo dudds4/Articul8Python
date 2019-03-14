@@ -29,6 +29,9 @@ class Quat:
         return Quat(self.w - other.w, self.x - other.x, self.y - other.y, self.z - other.z)
 
     def __mul__(self, other):
+        if(type(other) == type(1) or type(other) == type(1.2)):
+            return Quat(self.w*other, self.x*other, self.y*other, self.z*other)
+
         prod0 = self.w*other.w - self.x*other.x - self.y*other.y - self.z*other.z
         prod1 = self.w*other.x + self.x*other.w + self.y*other.z - self.z*other.y
         prod2 = self.w*other.y - self.x*other.z + self.y*other.w + self.z*other.x

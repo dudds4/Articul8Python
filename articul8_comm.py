@@ -10,20 +10,20 @@ global articul8
 initialized = False
 
 portNicknames = ["thigh", "shank"]
-
 numLRAs = [8, 6]
 ports = ["COM6", "COM5"]
+
+# ports = ["COM6"]
+
 if (platform.system().lower() == 'darwin'):
     ports = ["/dev/cu.Articul8Board3-SerialPo", "/dev/cu.Articul8Board1-SerialPo"]
 
 # Opens the given serial port at the given index and looks for devices
-def ser_open(port, portId=0):
+def ser_open(port, portId):
 	global articul8
-	if(portId == None):
-		portId = 0
 
 	try:
-		articul8.ser_open( port.encode('utf-8'), len(port), portId)
+		articul8.ser_open( port.encode('utf-8'), len(port), portId, numLRAs[portId])
 	except Exception as ex:
 		print(ex)
 
@@ -64,6 +64,23 @@ def ser_getLastPacket(portId=0):
 
 	return result
 
+def ser_getLraPacket(portId=0):
+	global articul8
+	
+	c_ubyte_p = POINTER(c_ubyte)
+
+	p = articul8.ser_getLraPacket(portId)
+
+	result = struct.pack('B', cast(p, c_ubyte_p).contents.value)
+	for i in range(1, PACKET_SIZE):
+		byte = cast(p+i, c_ubyte_p).contents.value
+		result += struct.pack('B', byte)
+
+	
+
+	return result
+
+
 def ser_startLogging(portId=0):
 	global articul8
 	articul8.ser_startLogging(portId)
@@ -94,6 +111,23 @@ def ser_getLogPacket(portId=0):
 		result = None
 
 	return result	
+
+def ser_startRecording():
+	global articul8
+	articul8.ser_startRecording()
+
+def ser_stopRecording():
+	global articul8
+	articul8.ser_stopRecording()
+
+def ser_startExercise():
+	global articul8
+	articul8.ser_startExercise()
+
+def ser_stopExercise():
+	global articul8
+	articul8.ser_stopExercise()			
+
 
 def ser_getFrequency(portId):
 	global articul8
@@ -141,7 +175,7 @@ def loadCSerial():
 	articul8.ser_setup()
 
 	# set arg types
-	articul8.ser_open.argtypes = [c_char_p, c_int, c_uint]
+	articul8.ser_open.argtypes = [c_char_p, c_int, c_uint, c_int]
 	articul8.ser_send.argtypes = [c_char_p, c_int, c_uint]
 	articul8.ser_getLastPacket.restype = c_void_p
 	articul8.ser_getLogPacket.restype = c_void_p

@@ -35,7 +35,7 @@ def readIMUData(path="."):
                 parsed_message = IMUDataMsg.fromBytes(packet)
                 imuMsgLists[i].append(parsed_message)
 
-    return imuMsgLists
+    return imuMsgLists, files
 
 
 def plotQuaternia(imuDataSets, title=''):
@@ -76,6 +76,106 @@ def plotKneeAngles(imuDataSets, title=''):
     plt.show()
 
 
+def getLocalQuatDiffs(globalQuats):
+    initialQuat = globalQuats[0]
+    globalQuatDiffs = [initialQuat * quat.conj() for quat in globalQuats]
+    localQuatDiff = [ [globalQuatDiff[0]] + globalQuat.conj().rotate(globalQuatDiff[1:]) for globalQuat, globalQuatDiff in zip(globalQuats, globalQuatDiffs)]
+
+    return localQuatDiff
+
+def imresize(arrIn, s):
+    n = len(arrIn)
+    arr = np.array(arrIn[0])
+    arr.resize(s)
+
+    c = n / s
+
+    arr[0] = arrIn[0]
+    arr[s-1] = arrIn[n-1]
+    
+    for i in range(0, s-1):
+        fidx = c * i
+        idx_l = int(fidx)
+        idx_u = idx_l + 1
+        dl = fidx - idx_l
+        du = idx_u - fidx
+        m = dl + du
+
+        arr[i] = arrIn[idx_l]*(du/m) + arrIn[idx_u]*(dl/m)
+
+    return arr
+
+def lowpass(arr, alpha=0.9):
+    lp = arr
+    for i in range(1, len(lp)):
+        lp[i] = lp[i-1]*alpha + lp[i]*(1-alpha)
+    return lp
+
+def plotKneeFlexionVsExtRotation(imuDataSets, filenames, offset):
+
+    # while(filenameSet != []):
+
+    names = ['shank', 'thigh']
+    print(filenames)
+    
+    if( 'COM5' in filenames[0] ):
+        shankIndex = 0
+        thighIndex = 1
+    else:
+        shankIndex = 1
+        thighIndex = 0
+
+    # n = min( [len(imus) for imus in imuDataSets] )
+    # n = n-1
+
+    # imuDataSets = np.array(imuDataSets)
+    imuDataSets = [ds[offset:] for ds in imuDataSets]
+
+    shankT = np.array( [ s.time for s in imuDataSets[shankIndex] ] )
+    thighT = np.array( [s.time for s in imuDataSets[thighIndex] ] )
+
+    shankT = np.subtract(shankT, shankT[0])
+    thighT = np.subtract(thighT, thighT[0])
+
+    maxT = min(shankT[-1], thighT[-1])
+
+    shankIMU = np.array( [Quat(s.quat) for s in imuDataSets[shankIndex]] )
+    shankAccel = np.array( [s.xAccel for s in imuDataSets[shankIndex] ] )
+    thighIMU = np.array( [Quat(s.quat) for s in imuDataSets[thighIndex]] ) 
+
+    shankIMU = shankIMU[ np.where(shankT < maxT) ]
+    shankAccel = shankAccel[ np.where(shankT < maxT) ]
+    thighIMU = thighIMU[ np.where(thighT < maxT) ]
+
+    shankT = shankT[ np.where(shankT < maxT) ]
+    thighT = thighT[ np.where(thighT < maxT) ]
+
+    if(len(shankT) > len(thighT)):
+
+        thighT = imresize(thighT, len(shankT))
+        thighIMU = imresize(thighIMU, len(shankT))
+
+    elif(len(shankT) < len(thighT)):
+        shankAccel = imresize(shankAccel, len(thighT))
+        shankIMU = imresize(shankIMU, len(thighT))
+        shankT = imresize(shankT, len(thighT))
+        
+    kneeAngles = [getKneeAngle(s, t) for s,t in zip(shankIMU, thighIMU)]
+    # kneeAngles = [quatTo3Angle(q)[2] for q in getLocalQuatDiffs(thighIMU)]
+    externRot = [quatTo3Angle(q)[0] for q in getLocalQuatDiffs(shankIMU)]
+
+    # plt.plot(kneeAngles, ankleFlexion)
+    # ankleT -= ankleT[0]
+    # print(ankleT[0])
+    # np.subtract(kneeT, kneeT[0])
+    
+    plt.plot(shankT, lowpass(np.square(shankAccel)))
+    # plt.plot(thighT, kneeAngles)
+
+    # plt.plot(kneeAngles, shankAccel)
+
+    # plt.show()
+
 def plotJointAngles(imuDataSets, title=''):
 
     n = min([len(imuDataSet) for imuDataSet in imuDataSets])
@@ -86,11 +186,7 @@ def plotJointAngles(imuDataSets, title=''):
     for i, imuDataSet in enumerate(imuDataSets):
 
         imuDataSet = imuDataSet[:n]
-        initialQuat = Quat(imuDataSet[0].quat)
-
-        globalQuats = [Quat(IMUSample.quat) for IMUSample in imuDataSet]
-        globalQuatDiffs = [initialQuat * quat.conj() for quat in globalQuats]
-        localQuatDiff = [ [globalQuatDiff[0]] + globalQuat.conj().rotate(globalQuatDiff[1:]) for globalQuat, globalQuatDiff in zip(globalQuats, globalQuatDiffs)]
+        localQuatDiff = getLocalQuatDiffs([Quat(imu.quat) for imu in imuDataSet])
 
         roll =  [180/math.pi*quatTo3Angle(q)[0] for q in localQuatDiff]
         pitch = [180/math.pi*quatTo3Angle(q)[1] for q in localQuatDiff]
@@ -247,16 +343,27 @@ def testGravity(imuDataSets):
 def main():
     loadCSerial()
 
-    if(len(sys.argv) < 2):
-        print("Please supply a folder containing log files")
-    else:
-        for i in range(1, len(sys.argv)):   
-            imuDataSets = readIMUData(sys.argv[i])
+    # if(len(sys.argv) < 2):
+    #     print("Please supply a folder containing log files")
+    # else:
+    #     for i in range(1, len(sys.argv)):
+    imuDataSets, filenames = readIMUData("./timedlogs/squat")
+    plotKneeFlexionVsExtRotation(imuDataSets, filenames, 40)
+    
+    imuDataSets, filenames = readIMUData("./timedlogs/heels_off_ground")
+    plotKneeFlexionVsExtRotation(imuDataSets, filenames, 100)
+
             # plotGravity(imuDataSets, sys.argv[i])
             # plotKneeAngles(imuDataSets, sys.argv[i])
             # plotQuaternia(imuDataSets)
             # plotJointAngles(imuDataSets, sys.argv[i])
-            testGravity(imuDataSets)
+
+    plt.title("Shank Accel vs. Time during squat")
+    plt.legend(["Regular Squat", "Heels Off Ground"])
+
+    # plt.rcParams.update({'font.size': 50})
+
+    plt.show()
 
 if __name__ == '__main__':
     main()

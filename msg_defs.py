@@ -236,7 +236,7 @@ class IMUDataMsg:
         z = struct.pack('B', 0)
 
         xAccelBytes = bytes[17:19]
-        xAccel = struct.unpack('<i', xAccelBytes + 2*z)[0]
+        xAccel = struct.unpack('<h', xAccelBytes)[0]
 
         timestampBytes = bytes[19:22]
         timestamp = struct.unpack('<i', timestampBytes + z)[0]

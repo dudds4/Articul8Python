@@ -99,16 +99,13 @@ def main():
     time.sleep(0.2)
 
     while(checkThreadFlag()):
-        print("Recording")
+        x = input("Press to record")
         ser_startRecording()
-        time.sleep(5)
+        x = input("Press to exercise")
         ser_stopRecording()
-        print("Stopped Recording")
-
-        time.sleep(2)
-        print("Exercising")
+        time.sleep(0.5)
         ser_startExercise()
-        time.sleep(5)
+        x = input("Press to stop exercise")
         ser_stopExercise()
         print("Stopped exercising")
 

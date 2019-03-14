@@ -51,7 +51,7 @@ void ser_cleanup() {
 	}
 }
 
-void ser_open(const char* portName, int n, unsigned port) {
+void ser_open(const char* portName, int n, unsigned port, unsigned nLras) {
 	if(port >= NUM_PORTS) 
 			return;
 
@@ -67,7 +67,7 @@ void ser_open(const char* portName, int n, unsigned port) {
 			ser[port]->close();
 
 		try {
-			ser[port]->setPort(portName, BAUD_RATE, port);
+			ser[port]->setPort(portName, BAUD_RATE, port, nLras);
 			ser[port]->setRecordingMan(&recording_man);
 			ser[port]->open();
 			ser[port]->clear();			

@@ -52,10 +52,10 @@ struct LegState {
 	}
 
     // TODO: Make constructor
-	static LegState fromIMU(const Quaternion& currShank, const Quaternion& currThigh,
-							const Quaternion& initialShank, const Quaternion& initialThigh) {
+	LegState(	const Quaternion& currShank, const Quaternion& currThigh,
+				const Quaternion& initialShank, const Quaternion& initialThigh) {
 
-		float rpyAngles[NUM_STATES];
+		// float rpyAngles[NUM_STATES];
 
 		Quaternion globalShankDiff = initialShank.getProduct(currShank.getConjugate());
 		VectorFloat shankCoords(globalShankDiff.x, globalShankDiff.y, globalShankDiff.z);
@@ -69,10 +69,10 @@ struct LegState {
 
 		Quaternion localThighDiff = Quaternion(globalThighDiff.w, thighCoords.x, thighCoords.y, thighCoords.z);
 
-		saveRPYAngles(rpyAngles,   localShankDiff);
-		saveRPYAngles(rpyAngles+3, localThighDiff);
+		saveRPYAngles(this->rpyAngles,   localShankDiff);
+		saveRPYAngles(this->rpyAngles+3, localThighDiff);
 
-		return LegState(rpyAngles);
+		// return LegState(rpyAngles);
 	}
 
 

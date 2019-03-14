@@ -119,13 +119,13 @@ void generateLraPacket(uint8_t* packet, const std::vector<LegState>& motion, uns
     else if(abs(pd) > abs(rd))
     {
     	float mag = 8 * abs(rd) * 180 / PI;
-    	angle = pitchDiff > 0 ? 0 : PI;
+    	float angle = pd > 0 ? 0 : PI;
     	lraRawPacket(packet, angle, mag);
     }
     else if(abs(rd) > (12*PI/180))
     {
-    	float mag = rd > 0 ? 1 : -1
-    	lraRotatePacket(packet, sign*0.8);
+    	float mag = rd > 0 ? 1 : -1;
+    	lraRotatePacket(packet, mag*0.8);
     }
     else
     {
@@ -189,7 +189,7 @@ struct SerialMan : Periodic<SerialMan>
 		recordingMan = recMan;
 	}
 
-	m_nLras = 0;
+	int m_nLras = 0;
 	bool m_exercising = false;
 	LraPacketGenerator lraPacketGenerator;
 
@@ -257,7 +257,7 @@ struct SerialMan : Periodic<SerialMan>
 		      	if(motion.size() && lastpacket[POS_TYPE] == IMU_DATA)
 		      	{
 		      		int currentStateIdx = getCurrentLegState(motion, currentState, lastStateIdx);
-		      		lraPacketGenerator.generateLraPacket(hotpathPacket, motion, currentStateIdx, serial_id);
+		      		lraPacketGenerator.generateLraPacket(hotpathPacket, motion, currentStateIdx, currentState, serial_id);
 		      		
 		      		if(m_exercising)
 		      		{

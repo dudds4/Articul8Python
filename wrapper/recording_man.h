@@ -37,7 +37,9 @@ struct RecordingMan {
 
 		if (quatsRecieved[0] && quatsRecieved[1]) {
 			GUARD(myMutex);
-			recording.push_back(LegState::fromIMU(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]));
+
+			recording.emplace_back(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
+			// recording.push_back(LegState::fromIMU(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]));
 		}
 	}
 };

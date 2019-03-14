@@ -75,8 +75,8 @@ def main():
     print('Starting TCP server thread')
     tcpServerThread = startThread(tcpServerWorker)
 
-    print('Starting LRA control thread')
-    lraControlThread = startThread(lraControlWorker)
+    # print('Starting LRA control thread')
+    # lraControlThread = startThread(lraControlWorker)
 
     portIdxs = [i for i in range(len(ports))]
 

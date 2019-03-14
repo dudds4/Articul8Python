@@ -200,15 +200,21 @@ struct SerialMan : Periodic<SerialMan>
 		serial = new Serial();
 	}
 
-	SerialMan(std::string port, int baud) 
+	SerialMan(std::string port, int baud, int sid) 
 	{
 		serial = new Serial(port, baud);
+		serial_id = sid;
 	}
 
-	void setPort(std::string port, int baud)
+	void setPort(std::string port, int baud, int sid)
 	{
 		serial->setPort(port);
 		serial->setBaudrate(baud);
+		serial_id = sid;
+	}
+
+	void setRecordingMan(RecordingMan* recMan) {
+		recordingMan = recMan;
 	}
 
 	int m_band = 0, m_nLras = 8;
@@ -269,9 +275,7 @@ struct SerialMan : Periodic<SerialMan>
 		      // Populate buffer with first complete BT packet
 		      if (cb.readPacket(lastpacket))
 		      {
-
 		      	// HOT PATH
-
 		      	if(m_exercising && lastpacket[POS_TYPE] == IMU_DATA)
 		      	{
 
@@ -290,9 +294,11 @@ struct SerialMan : Periodic<SerialMan>
 			        lastStateIdx = currentStateIdx;
 			        // return currBodyState.errorToLraMsgs(nearestState)
 
-
 		      	}
-
+		      	else if (recording && lastpacket[POS_TYPE] == IMU_DATA && recordingMan != nullptr)
+		      	{
+		      		recordingMan->recievedQuat(Quaternion.fromImuPacket(lastpacket), serial_id);
+		      	}
                 if(lastpacket[POS_TYPE] == 10)
                 {
 					GUARD(myMutex);
@@ -406,6 +412,30 @@ struct SerialMan : Periodic<SerialMan>
     	return 1000.0 / period;
     }
 
+    bool startRecording() {
+    	if (!exercising) {
+    		recording = true;
+    	}
+    	return recording
+    }
+
+    bool stopRecording() {
+    	recording = false;
+    	return !recording;
+    }
+
+    bool startExercise() {
+    	if (!recording) {
+    		exercising = true;
+    	}
+    	return exercising
+    }
+
+    bool stopExercise() {
+    	exercising = false;
+    	return !exercising;
+    }
+
 private:
 	Serial* serial;
 	CircularBuffer<2*LINBUFSIZE> cb;
@@ -422,6 +452,11 @@ private:
 
 	double period = 1000;
 	int printCount = 0;
+
+	RecordingMan* recordingMan;
+	int serial_id = -1;
+	bool recording = false;
+	bool exercising = false;
 
 	std::chrono::time_point<std::chrono::system_clock> lastReceived = std::chrono::system_clock::now();      
 

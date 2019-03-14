@@ -10,6 +10,7 @@
 SerialMan *ser[NUM_PORTS] = {nullptr};
 std::thread *serThread[NUM_PORTS] = {nullptr};
 LogReader logReader[NUM_PORTS];
+RecordingMan recording_man;
 
 #define BAUD_RATE 9600
 
@@ -65,7 +66,8 @@ void ser_open(const char* portName, int n, unsigned port) {
 			ser[port]->close();
 
 		try {
-			ser[port]->setPort(portName, BAUD_RATE);
+			ser[port]->setPort(portName, BAUD_RATE, port);
+			ser[port]->setRecordingMan(&recording_man);
 			ser[port]->open();
 			ser[port]->clear();			
 		} catch (const std::exception &e) {
@@ -187,4 +189,33 @@ double ser_getFrequency(unsigned port)
 			return -1;
 
 	return ser[port]->getFrequency();
+}
+
+void ser_startRecording()
+{
+	recording_man.beginRecording();
+	for (int i = 0; i < NUM_PORTS; i++) {
+		ser[port]->startRecording();
+	}
+}
+
+void ser_stopRecording()
+{
+	for (int i = 0; i < NUM_PORTS; i++) {
+		ser[port]->stopRecording();
+	}
+}
+
+void ser_startExercise()
+{
+	for (int i = 0; i < NUM_PORTS; i++) {
+		ser[port]->startExercise();
+	}
+}
+
+void ser_stopExercise()
+{
+	for (int i = 0; i < NUM_PORTS; i++) {
+		ser[port]->stopExercise();
+	}
 }

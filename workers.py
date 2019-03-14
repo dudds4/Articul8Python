@@ -237,6 +237,10 @@ def testLraSpinWorker():
 
         if (tcpConnection is not None):
             sendTCP(buildLRAMsgTCP(int(i/2), (i+1)%2, newLraMsg))
+            time.sleep(0.002)
+            sendTCP(buildLRAMsgTCP(int(i/2), (i+1)%2, newLraMsg))
+            time.sleep(0.002)
+            sendTCP(buildLRAMsgTCP(int(i/2), (i+1)%2, newLraMsg))
 
         time.sleep(LRA_WORKER_PERIOD)
         count += 1
@@ -267,6 +271,10 @@ def lraControlWorker():
 
                 # TODO: Send all LRAs over TCP
                 if (tcpConnection is not None):
+                    sendTCP(buildLRAMsgTCP(int(i/2), (i+1)%2, newLraMsgs[i]))
+                    time.sleep(0.002)
+                    sendTCP(buildLRAMsgTCP(int(i/2), (i+1)%2, newLraMsgs[i]))
+                    time.sleep(0.002)
                     sendTCP(buildLRAMsgTCP(int(i/2), (i+1)%2, newLraMsgs[i]))
 
         time.sleep(LRA_WORKER_PERIOD)

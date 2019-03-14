@@ -72,6 +72,34 @@ struct LegState {
 
 		return LegState(rpyAngles);
 	}
+
+
+	// david's code
+	float r1, p1, y1;
+	float r2, p2, y2;
+
+	inline LegState getDiff(const LegState& b)
+	{
+		return {
+			.r1 = this->r1 - b.r1,
+			.p1 = this->p1 - b.p1,
+			.y1 = this->y1 - b.y1,
+
+			.r2 = this->r2 - b.r2,
+			.p2 = this->p2 - b.p2,
+			.y2 = this->y2 - b.y2,
+		}
+	}
+
+	inline float getDist(const LegState& a, const LegState& b)
+	{
+		LegState diff = getDiff(b);
+
+		return 	diff.r1*diff.r1 + diff.p1*diff.p1 + diff.y1*diff.y1 +
+				diff.r2*diff.r2 + diff.p2*diff.p2 + diff.y2*diff.y2;
+	}
+
+
 };
 
 #endif

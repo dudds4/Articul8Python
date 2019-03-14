@@ -9,6 +9,10 @@
 
 #define GUARD(x) std::lock_guard lk(x)
 
+#ifndef LIKELY
+#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
+#endif
+
 struct RecordingMan {
 
 	std::vector<LegState> recording;
@@ -16,9 +20,13 @@ struct RecordingMan {
 	Quaternion initialQuats[2];
 	Quaternion latestQuats[2];
 
+	Quaternion initialExerciseQuats[2];
+	bool gotInitialExercise[2];
+
 	bool quatsRecieved[2];
 	mutable std::mutex myMutex;
-	bool isRecording = false;
+	bool m_recording = false;
+	bool m_exercising = false;
 
 	RecordingMan() {
 		recording = std::vector<LegState>();
@@ -26,24 +34,33 @@ struct RecordingMan {
 		quatsRecieved[1] = false;
 	}
 
-	void beginRecording() {
+	void startRecording() {
+		if (m_exercising || m_recording) {
+			return;
+		}
 		GUARD(myMutex);
 		recording.clear();
 		quatsRecieved[0] = false;
 		quatsRecieved[1] = false;
 
-		isRecording = true;
+		m_recording = true;
 	}
 	void stopRecording() {
-		isRecording = false;
+		m_recording = false;
+	}
 
-		// let's condense this bad boy
-		// GUARD(myMutex);
-		// for(int i = recording.size()-2; i >= 1; --i)
-		// {
+	void startExercise() {
+		if (m_exercising || m_recording) {
+			return;
+		}
+		gotInitialExercise[0] = false;
+		gotInitialExercise[1] = false;
 
-		// }
+		m_exercising = true;
+	}
 
+	void stopExercise() {
+		m_exercising = false;
 	}
 
 	void receivedQuat(float* quat, int idx)
@@ -55,12 +72,17 @@ struct RecordingMan {
 			initialQuats[idx] = latestQuats[idx];
 		}
 
+		if (m_exercising && !gotInitialExercise[idx]) {
+			initialExerciseQuats[idx] = latestQuats[idx];
+			gotInitialExercise[idx] = true;
+		}
+
 		quatsRecieved[idx] = true;
 
-		if (isRecording && quatsRecieved[0] && quatsRecieved[1]) {
+		if (m_recording && quatsRecieved[0] && quatsRecieved[1]) {
 			GUARD(myMutex);
 			recording.emplace_back(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
-		}		
+		}
 	}
 
 	// void recievedQuat(const Quaternion& q, int idx) {
@@ -71,7 +93,7 @@ struct RecordingMan {
 	// 	quatsRecieved[idx] = true;
 	// 	latestQuats[idx] = q;
 
-	// 	if (isRecording && quatsRecieved[0] && quatsRecieved[1]) {
+	// 	if (m_recording && quatsRecieved[0] && quatsRecieved[1]) {
 	// 		GUARD(myMutex);
 
 	// 		recording.emplace_back(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
@@ -99,7 +121,11 @@ struct RecordingMan {
 			}
 		}
 
-		LegState current = LegState(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
+		if (!gotInitialExercise[0] || !gotInitialExercise[1]) {
+			return LegState(0, 0, 0, 0, 0, 0);
+		}
+
+		LegState current = LegState(latestQuats[1], latestQuats[0], initialExerciseQuats[1], initialExerciseQuats[0]);
 
 		float minDist = current.dist(recording.at(cachedLatestDiffIdx));
 		int minIdx = cachedLatestDiffIdx;
@@ -137,15 +163,8 @@ struct RecordingMan {
 		cachedLatestDiffIdx = minIdx;
 		auto r = current.getDiff(recording.at(minIdx));
 		// auto r = recording.at(minIdx).getDiff(current);
-		
-		// for(int i = 0; i < 6; ++i)
-		// 	std::cout << r.rpyAngles[i] << " ";
-		// std::cout << "\n";
-
 
 		return r; 
-
-
 	}
 };
 

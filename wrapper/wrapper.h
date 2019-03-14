@@ -28,10 +28,10 @@ uint8_t* ser_getLogPacket(unsigned port);
 
 double ser_getFrequency(unsigned port);
 
-void ser_startRecording();
-void ser_stopRecording();
-void ser_startExercise();
-void ser_stopExercise();
+bool ser_startRecording();
+bool ser_stopRecording();
+bool ser_startExercise();
+bool ser_stopExercise();
 
 }
 

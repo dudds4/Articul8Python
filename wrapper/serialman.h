@@ -23,7 +23,9 @@ typedef std::vector<uint8_t> Msg;
 
 #define GUARD(x) std::lock_guard lk(x)
 
+#ifndef LIKELY
 #define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
+#endif
 
 struct SerialMan : Periodic<SerialMan>
 {

@@ -63,7 +63,7 @@ struct LraPacketGenerator
 		return true;
 	}
 
-	#define DIST_SQR_THRESHOLD 20
+	#define DIST_SQR_THRESHOLD 10
 
 	bool lraRawPacket(uint8_t* packet, float angle, float mag)
 	{

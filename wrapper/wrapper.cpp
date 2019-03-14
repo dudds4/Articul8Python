@@ -53,7 +53,7 @@ void ser_cleanup() {
 
 void ser_open(const char* portName, int n, unsigned port, int nLras) {
 	if(port >= NUM_PORTS) 
-			return;
+		return;
 
 	char* tmp[n+1];
 	
@@ -202,32 +202,46 @@ double ser_getFrequency(unsigned port)
 	return ser[port]->getFrequency();
 }
 
-void ser_startRecording()
+bool ser_startRecording()
 {
-	recording_man.beginRecording();
+	if (recording_man.m_recording || recording_man.m_exercising) {
+		return false;
+	}
+	recording_man.startRecording();
 	for (int i = 0; i < NUM_PORTS; i++) {
 		ser[i]->startRecording();
 	}
+	return recording_man.m_recording;
 }
 
-void ser_stopRecording()
+bool ser_stopRecording()
 {
 	for (int i = 0; i < NUM_PORTS; i++) {
 		ser[i]->stopRecording();
 	}
 	recording_man.stopRecording();
+
+	return !recording_man.m_recording;
 }
 
-void ser_startExercise()
+bool ser_startExercise()
 {
+	if (recording_man.m_recording || recording_man.m_exercising) {
+		return false;
+	}
+	recording_man.startExercise();
 	for (int i = 0; i < NUM_PORTS; i++) {
 		ser[i]->startExercise();
 	}
+	return recording_man.m_exercising;
 }
 
-void ser_stopExercise()
+bool ser_stopExercise()
 {
 	for (int i = 0; i < NUM_PORTS; i++) {
 		ser[i]->stopExercise();
 	}
+	recording_man.stopExercise();
+
+	return !recording_man.m_exercising;
 }

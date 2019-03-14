@@ -34,6 +34,7 @@ THE SOFTWARE.
 
 #include <math.h>
 #include <stdint.h>
+#include "msg_defs.h"
 
 class Quaternion {
     public:
@@ -96,6 +97,11 @@ class Quaternion {
             Quaternion r(w, x, y, z);
             r.normalize();
             return r;
+        }
+
+        // TODO: Make constructor
+        static Quaternion fromImuPacket(uint8_t* packet) {
+            return Quaternion(1, 0, 0, 0);
         }
 };
 

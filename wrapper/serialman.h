@@ -1,6 +1,7 @@
 #ifndef SERIALMAN_H
 #define SERIALMAN_H
 
+#include "recording_man.h"
 #include "logger.h"
 #include "quickqueue.h"
 #include "serial/serial.h"
@@ -297,7 +298,7 @@ struct SerialMan : Periodic<SerialMan>
 		      	}
 		      	else if (recording && lastpacket[POS_TYPE] == IMU_DATA && recordingMan != nullptr)
 		      	{
-		      		recordingMan->recievedQuat(Quaternion.fromImuPacket(lastpacket), serial_id);
+		      		recordingMan->recievedQuat(Quaternion::fromImuPacket(lastpacket), serial_id);
 		      	}
                 if(lastpacket[POS_TYPE] == 10)
                 {
@@ -416,7 +417,7 @@ struct SerialMan : Periodic<SerialMan>
     	if (!exercising) {
     		recording = true;
     	}
-    	return recording
+    	return recording;
     }
 
     bool stopRecording() {
@@ -428,7 +429,7 @@ struct SerialMan : Periodic<SerialMan>
     	if (!recording) {
     		exercising = true;
     	}
-    	return exercising
+    	return exercising;
     }
 
     bool stopExercise() {

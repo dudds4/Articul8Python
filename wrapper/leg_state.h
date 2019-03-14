@@ -51,6 +51,7 @@ struct LegState {
 		return sumsq;
 	}
 
+    // TODO: Make constructor
 	static LegState fromIMU(const Quaternion& currShank, const Quaternion& currThigh,
 							const Quaternion& initialShank, const Quaternion& initialThigh) {
 

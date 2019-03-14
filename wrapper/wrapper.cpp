@@ -1,5 +1,6 @@
 #include "wrapper.h"
 #include "serialman.h"
+#include "recording_man.h"
 #include "logger.h"
 #include <thread>
 #include <atomic>
@@ -195,27 +196,27 @@ void ser_startRecording()
 {
 	recording_man.beginRecording();
 	for (int i = 0; i < NUM_PORTS; i++) {
-		ser[port]->startRecording();
+		ser[i]->startRecording();
 	}
 }
 
 void ser_stopRecording()
 {
 	for (int i = 0; i < NUM_PORTS; i++) {
-		ser[port]->stopRecording();
+		ser[i]->stopRecording();
 	}
 }
 
 void ser_startExercise()
 {
 	for (int i = 0; i < NUM_PORTS; i++) {
-		ser[port]->startExercise();
+		ser[i]->startExercise();
 	}
 }
 
 void ser_stopExercise()
 {
 	for (int i = 0; i < NUM_PORTS; i++) {
-		ser[port]->stopExercise();
+		ser[i]->stopExercise();
 	}
 }

@@ -60,7 +60,7 @@ struct LraPacketGenerator
 		intensities[upperInd] = mag * lowerDist / s;		
 	}
 
-	void lraRotatePacket(uint8_t* packet, bool isSpin, int intensity)
+	void lraRotatePacket(uint8_t* packet, int intensity)
 	{
 		packet[0] = SOP;
 		packet[1] = LRA_CONTROL;
@@ -113,53 +113,24 @@ void generateLraPacket(uint8_t* packet, const std::vector<LegState>& motion, uns
     {
     	float mag = 6 * abs(yd) * 180 / PI;
     	float angle = yd > 0 ? PI / 2 : 3*PI/2;
-    	// interpolateAngle(angle, mag, intensities, N_BANDS);
+    	lraRawPacket(packet, angle, mag);
     }
-
-
-
-    // if (abs(yawDiff) > abs(rollDiff) and abs(yawDiff) > abs(pitchDiff)):
-    //     mag = 6 * abs(yawDiff) * 180 / math.pi
-    //     angle = math.pi/2
-    //     if (yawDiff < 0):
-    //         angle = 3*math.pi/2
-
-    //     lraInterpolation = interpolateAngle(angle, band)
-
-    //     for lra in lraInterpolation:
-    //         intensities[lra['idx']] = int(min(127, mag * lra['portion']))
-
-    //     lraMsg = LRACmdMsg(False, intensities).toBytes()
-    //     lraMsgs.append(lraMsg)
-
-    // elif (abs(pitchDiff) > abs(rollDiff)):
-    //     mag = 8 * abs(pitchDiff) * 180 / math.pi
-    //     angle = 0
-    //     if (pitchDiff < 0):
-    //         angle = math.pi
-
-    //     lraInterpolation = interpolateAngle(angle, band)
-
-    //     for lra in lraInterpolation:
-    //         intensities[lra['idx']] = int(min(127, mag * lra['portion']))
-
-    //     lraMsg = LRACmdMsg(False, intensities).toBytes()
-    //     lraMsgs.append(lraMsg)
-
-
-    // elif (abs(rollDiff) * 180 / math.pi > 12):
-    //     sign = 1.0
-    //     if (rollDiff < 0):
-    //         sign = -1.0
-
-    //     lraMsg = LRACmdMsg(True, sign*0.8).toBytes()
-    //     lraMsgs.append(lraMsg)
-
-    // else:
-    //     lraMsg = LRACmdMsg(False, intensities).toBytes()
-    //     lraMsgs.append(lraMsg)
+    else if(abs(pd) > abs(rd))
+    {
+    	float mag = 8 * abs(rd) * 180 / PI;
+    	angle = pitchDiff > 0 ? 0 : PI;
+    	lraRawPacket(packet, angle, mag);
+    }
+    else if(abs(rd) > (12*PI/180))
+    {
+    	float mag = rd > 0 ? 1 : -1
+    	lraRotatePacket(packet, sign*0.8);
+    }
+    else
+    {
+    	lraRawPacket(packet, 0, 0);
+    }
 }
-
 
 	~LraPacketGenerator() { delete[] bounds; }
 
@@ -206,25 +177,27 @@ struct SerialMan : Periodic<SerialMan>
 		serial_id = sid;
 	}
 
-	void setPort(std::string port, int baud, int sid)
+	void setPort(std::string port, int baud, int sid, int nLras)
 	{
 		serial->setPort(port);
 		serial->setBaudrate(baud);
-		serial_id = sid;
+		setBand(sid, nLras);
 	}
 
 	void setRecordingMan(RecordingMan* recMan) {
 		recordingMan = recMan;
 	}
 
-	int m_band = 0, m_nLras = 8;
+	m_nLras = 0;
 	bool m_exercising = false;
 	LraPacketGenerator lraPacketGenerator;
 
 	void setExercising(bool exercising) { m_exercising = exercising; }
+	
 	void setBand(int idx, int nLras) 
 	{ 
-		m_band = idx; m_nLras = nLras; 
+		serial_id = idx;
+		m_nLras = nLras; 
 		lraPacketGenerator = LraPacketGenerator(nLras); 
 	}
 
@@ -275,27 +248,27 @@ struct SerialMan : Periodic<SerialMan>
 		      // Populate buffer with first complete BT packet
 		      if (cb.readPacket(lastpacket))
 		      {
-		      	// HOT PATH
-		      	if(m_exercising && lastpacket[POS_TYPE] == IMU_DATA)
+		        std::vector<LegState> motion;
+		        LegState currentState = LegState({0, 0, 0, 0, 0, 0});
+		        int lastStateIdx;
+
+		        // hot path
+		      	if(motion.size() && lastpacket[POS_TYPE] == IMU_DATA)
 		      	{
-
-			        // currBodyState = BodyState.fromIMU(currIMU, baselineIMU)
-			        std::vector<LegState> motion;
-			        LegState currentState = LegState({0, 0, 0, 0, 0, 0});
-			        int lastStateIdx;
-			        int currentStateIdx = getCurrentLegState(motion, currentState, lastStateIdx);
-			        lraPacketGenerator.generateLraPacket(hotpathPacket, motion, currentStateIdx, currentState, m_band);
-
-			        {
+		      		int currentStateIdx = getCurrentLegState(motion, currentState, lastStateIdx);
+		      		lraPacketGenerator.generateLraPacket(hotpathPacket, motion, currentStateIdx, serial_id);
+		      		
+		      		if(m_exercising)
+		      		{
 			        	GUARD(myMutex);
 			        	serial->write(hotpathPacket, PACKET_SIZE);
-			        }
+		      		}
 
 			        lastStateIdx = currentStateIdx;
-			        // return currBodyState.errorToLraMsgs(nearestState)
-
 		      	}
-		      	else if (recording && lastpacket[POS_TYPE] == IMU_DATA && recordingMan != nullptr)
+
+
+		      	if (recording && lastpacket[POS_TYPE] == IMU_DATA && recordingMan != nullptr)
 		      	{
 		      		recordingMan->recievedQuat(Quaternion.fromImuPacket(lastpacket), serial_id);
 		      	}

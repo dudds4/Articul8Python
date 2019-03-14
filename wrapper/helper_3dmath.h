@@ -49,12 +49,20 @@ class Quaternion {
             y = 0.0f;
             z = 0.0f;
         }
-        
+
         Quaternion(float nw, float nx, float ny, float nz) {
             w = nw;
             x = nx;
             y = ny;
             z = nz;
+        }
+
+        Quaternion(float* q)
+        {
+            w = q[0];
+            x = q[1];
+            y = q[2];
+            z = q[3];            
         }
 
         Quaternion getProduct(const Quaternion& q) const {

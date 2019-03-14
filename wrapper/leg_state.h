@@ -91,46 +91,4 @@ struct LegState {
 
 };
 
-
-int getCurrentLegState(const std::vector<LegState> motion, const LegState& current, int start)
-{
-	float minDist = current.dist(motion.at(start));
-
-	int minIdx = start;
-
-	int nChecks = motion.size() / 5;
-	int s = motion.size();
-
-	float tmp;
-	int i;
-	for(i = start+1; i < nChecks && i < s; ++i)
-	{
-		tmp = current.dist(motion.at(i));
-		
-		if(tmp < minDist)
-		{
-			minDist = tmp;
-			minIdx = i;
-		}
-	}
-
-	// check if we need to loop around
-	if(i < nChecks)
-	{
-		nChecks -= i;
-		for(i = 0; i < nChecks; ++i)
-		{
-			tmp = current.dist(motion.at(i));
-			
-			if(tmp < minDist)
-			{
-				minDist = tmp;
-				minIdx = i;
-			}			
-		}
-	}
-
-	return minIdx;
-}
-
 #endif

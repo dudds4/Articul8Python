@@ -205,6 +205,7 @@ void ser_stopRecording()
 	for (int i = 0; i < NUM_PORTS; i++) {
 		ser[i]->stopRecording();
 	}
+	recording_man.stopRecording();
 }
 
 void ser_startExercise()

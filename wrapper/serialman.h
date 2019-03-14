@@ -13,6 +13,7 @@
 #include <chrono>
 #include "leg_state.h"
 #include "helper_3dmath.h"
+#include "lra_packet_gen.h"
 
 #define LINBUFSIZE 64
 
@@ -22,148 +23,7 @@ typedef std::vector<uint8_t> Msg;
 
 #define GUARD(x) std::lock_guard lk(x)
 
-
-#define IS_GREATEST(a, b, c) ( (a) > (b) && (a) > (c) )
-#define PI 3.14159265f
-
-struct LraPacketGenerator
-{
-	LraPacketGenerator(int nLras=0) {
-		NUM_LRAS = nLras;
-		bounds = new float[NUM_LRAS];
-
-		float step = 2 * PI / NUM_LRAS;
-		for(int i = 0; i < NUM_LRAS; ++i)
-			bounds[i] = step*i;
-	}
-
-	void interpolateAngle(float angle, float mag, uint8_t* intensities)
-	{
-		int lowerInd, upperInd = 1;
-		while(angle > bounds[upperInd] && upperInd < NUM_LRAS)
-			upperInd++;
-
-		lowerInd = upperInd - 1;
-		if(upperInd == NUM_LRAS) upperInd = 0;
-
-		if(lowerInd < 0 || lowerInd >= NUM_LRAS || upperInd < 0 || upperInd >= NUM_LRAS)
-			return;
-
-		for(int i = 0; i < NUM_LRAS; ++i)
-			intensities[i] = 0;
-
-		const float step = 2*PI/NUM_LRAS;
-		float lowerDist = angle - bounds[lowerInd];
-		float upperDist = step - lowerDist;
-		float s = lowerDist + upperDist;
-
-		intensities[lowerInd] = mag * upperDist / s;
-		intensities[upperInd] = mag * lowerDist / s;		
-	}
-
-	void lraRotatePacket(uint8_t* packet, int intensity)
-	{
-		packet[0] = SOP;
-		packet[1] = LRA_CONTROL;
-		packet[2] = LRA_SPIN;
-		packet[3] = intensity;
-		
-		memset(packet + 4, 0, 16);
-
-		packet[POS_CHECKSUM] = LRA_CONTROL + LRA_SPIN + intensity;
-	}
-
-	void lraRawPacket(uint8_t* packet, float angle, float mag)
-	{
-		packet[0] = SOP;
-		packet[1] = LRA_CONTROL;
-		packet[2] = LRA_NO_SPIN;
-
-		interpolateAngle(angle, mag, packet+3);
-
-		packet[POS_CHECKSUM] = 0;
-		
-		for(int i = 1; i < NUM_LRAS+4; ++i)
-		{
-			packet[POS_CHECKSUM] += packet[i];
-		}
-	}
-
-void generateLraPacket(uint8_t* packet, const std::vector<LegState>& motion, unsigned idx, const LegState& current, int boardIdx)
-{
-	LegState diff = current.getDiff(motion.at(idx));
-	    
-	uint8_t intensities[NUM_LRAS];
-
-	float yd, rd, pd;
-
-	if(boardIdx == 0)
-	{
-		rd = (diff.rpyAngles[0]);
-		pd = (diff.rpyAngles[1]);
-		yd = (diff.rpyAngles[2]);
-	}
-	else
-	{
-		rd = (diff.rpyAngles[0]);
-		pd = (diff.rpyAngles[1]);		
-		yd = (diff.rpyAngles[2]);
-	}
-    
-    if(IS_GREATEST(abs(yd), abs(rd), abs(pd)))
-    {
-    	float mag = 6 * abs(yd) * 180 / PI;
-    	float angle = yd > 0 ? PI / 2 : 3*PI/2;
-    	lraRawPacket(packet, angle, mag);
-    }
-    else if(abs(pd) > abs(rd))
-    {
-    	float mag = 8 * abs(rd) * 180 / PI;
-    	float angle = pd > 0 ? 0 : PI;
-    	lraRawPacket(packet, angle, mag);
-    }
-    else if(abs(rd) > (12*PI/180))
-    {
-    	float mag = rd > 0 ? 1 : -1;
-    	lraRotatePacket(packet, mag*0.8);
-    }
-    else
-    {
-    	lraRawPacket(packet, 0, 0);
-    }
-}
-
-	~LraPacketGenerator() { delete[] bounds; }
-
-	float* bounds;
-	int NUM_LRAS;
-};
-
-
-// void interpolateAngle(float angle, float mag, uint8_t* intensities)
-// {
-// 	int lowerInd, upperInd = 1;
-// 	while(m_angle > bounds[upperInd] && upperInd < NUM_LRAS)
-// 		upperInd++;
-
-// 	lowerInd = upperInd - 1;
-// 	if(upperInd == NUM_LRAS) upperInd = 0;
-
-// 	if(lowerInd < 0 || lowerInd >= NUM_LRAS || upperInd < 0 || upperInd >= NUM_LRAS)
-// 		return;
-
-// 	for(int i = 0; i < NUM_LRAS; ++i)
-// 		intensities[i] = 0;
-// 	// memset(intensities, 0, sizeof(int) * NUM_LRAS);
-
-// 	const float step = 2*PI/NUM_LRAS;
-// 	float lowerDist = m_angle - bounds[lowerInd];
-// 	float upperDist = step - lowerDist;
-
-// 	intensities[lowerInd] = m_intensity * upperDist / step;
-// 	intensities[upperInd] = m_intensity * lowerDist / step;
-// }
-
+#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
 
 struct SerialMan : Periodic<SerialMan>
 {
@@ -249,30 +109,27 @@ struct SerialMan : Periodic<SerialMan>
 		      // Populate buffer with first complete BT packet
 		      if (cb.readPacket(lastpacket))
 		      {
-		        std::vector<LegState> motion;
-		        LegState currentState = LegState({0, 0, 0, 0, 0, 0});
-		        int lastStateIdx;
-
-		        // hot path
-		      	if(motion.size() && lastpacket[POS_TYPE] == IMU_DATA)
+		      	// predict yes plz
+		      	if(LIKELY(lastpacket[POS_TYPE] == IMU_DATA))
 		      	{
-		      		int currentStateIdx = getCurrentLegState(motion, currentState, lastStateIdx);
-		      		lraPacketGenerator.generateLraPacket(hotpathPacket, motion, currentStateIdx, currentState, serial_id);
+		      		recordingMan->receivedQuat((float*)&lastpacket[POS_DATA], serial_id);
 		      		
-		      		if(m_exercising)
+		      		if(!recording)
 		      		{
-			        	GUARD(myMutex);
-			        	serial->write(hotpathPacket, PACKET_SIZE);
+
+			      		lraPacketGenerator.generatePacket(
+			      			hotpathPacket,
+			      			recordingMan->getLatestStateDiff(),
+			      			serial_id);
+
+			      		if(m_exercising)
+			      		{
+				        	GUARD(myMutex);
+				        	serial->write(hotpathPacket, PACKET_SIZE);
+			      		}
 		      		}
-
-			        lastStateIdx = currentStateIdx;
 		      	}
 
-
-		      	if (recording && lastpacket[POS_TYPE] == IMU_DATA && recordingMan != nullptr)
-		      	{
-		      		recordingMan->recievedQuat(Quaternion::fromImuPacket(lastpacket), serial_id);
-		      	}
                 if(lastpacket[POS_TYPE] == 10)
                 {
 					GUARD(myMutex);

@@ -53,7 +53,7 @@ struct SerialMan : Periodic<SerialMan>
 	bool m_exercising = false;
 	LraPacketGenerator lraPacketGenerator;
 
-	void setExercising(bool exercising) { m_exercising = exercising; }
+	// void setExercising(bool exercising) { m_exercising = exercising; }
 	
 	void setBand(int idx, int nLras) 
 	{ 
@@ -116,30 +116,42 @@ struct SerialMan : Periodic<SerialMan>
 		      		
 		      		if(!recording)
 		      		{
+		      			float asdf[6];
+
+		      			// LegState l(asdf);
 
 			      		lraPacketGenerator.generatePacket(
 			      			hotpathPacket,
+			      			// l,
 			      			recordingMan->getLatestStateDiff(),
 			      			serial_id);
 
 			      		if(m_exercising)
 			      		{
+			      			// std::cout << "sending packet" << std::endl;
+
 				        	GUARD(myMutex);
 				        	serial->write(hotpathPacket, PACKET_SIZE);
+
+				        	// for(int j = 0; j < PACKET_SIZE; ++j)
+				        	// 	std::cout << (int)hotpathPacket[j] << " ";
+
+				        	// std::cout << std::endl;
+				        	
 			      		}
 		      		}
 		      	}
 
-                if(lastpacket[POS_TYPE] == 10)
-                {
-					GUARD(myMutex);
-					serial->write(lastpacket, PACKET_SIZE);
-                	std::cout << "Received a test packet\n";
+     //            if(lastpacket[POS_TYPE] == 10)
+     //            {
+					// GUARD(myMutex);
+					// serial->write(lastpacket, PACKET_SIZE);
+     //            	std::cout << "Received a test packet\n";
 
-                	for(int i = 0; i < PACKET_SIZE; ++i)
-                		std::cout << (int) lastpacket[i] << " ";
-                	std::cout << std::endl;
-                }
+     //            	for(int i = 0; i < PACKET_SIZE; ++i)
+     //            		std::cout << (int) lastpacket[i] << " ";
+     //            	std::cout << std::endl;
+     //            }
 
 		      	packetId++;
 	      		computeFrequency();
@@ -244,7 +256,7 @@ struct SerialMan : Periodic<SerialMan>
     }
 
     bool startRecording() {
-    	if (!exercising) {
+    	if (!m_exercising) {
     		recording = true;
     	}
     	return recording;
@@ -257,14 +269,15 @@ struct SerialMan : Periodic<SerialMan>
 
     bool startExercise() {
     	if (!recording) {
-    		exercising = true;
+    		m_exercising = true;
     	}
-    	return exercising;
+
+    	return m_exercising;
     }
 
     bool stopExercise() {
-    	exercising = false;
-    	return !exercising;
+    	m_exercising = false;
+    	return !m_exercising;
     }
 
 private:
@@ -287,7 +300,6 @@ private:
 	RecordingMan* recordingMan;
 	int serial_id = -1;
 	bool recording = false;
-	bool exercising = false;
 
 	std::chrono::time_point<std::chrono::system_clock> lastReceived = std::chrono::system_clock::now();      
 

@@ -51,7 +51,7 @@ void ser_cleanup() {
 	}
 }
 
-void ser_open(const char* portName, int n, unsigned port, unsigned nLras) {
+void ser_open(const char* portName, int n, unsigned port, int nLras) {
 	if(port >= NUM_PORTS) 
 			return;
 

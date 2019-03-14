@@ -5,14 +5,17 @@
 #include <mutex>
 #include "leg_state.h"
 #include "helper_3dmath.h"
+#include <iostream>
 
 #define GUARD(x) std::lock_guard lk(x)
 
 struct RecordingMan {
 
 	std::vector<LegState> recording;
+	
 	Quaternion initialQuats[2];
 	Quaternion latestQuats[2];
+
 	bool quatsRecieved[2];
 	mutable std::mutex myMutex;
 	bool isRecording = false;
@@ -24,7 +27,7 @@ struct RecordingMan {
 	}
 
 	void beginRecording() {
-		recording = std::vector<LegState>();
+		recording.clear();
 		quatsRecieved[0] = false;
 		quatsRecieved[1] = false;
 
@@ -36,6 +39,7 @@ struct RecordingMan {
 
 	void receivedQuat(float* quat, int idx)
 	{
+		// return;
 		latestQuats[idx] = Quaternion(quat);
 
 		if (!quatsRecieved[idx]) {
@@ -75,6 +79,12 @@ struct RecordingMan {
 		int nChecks = recording.size() / 5;
 		int s = recording.size();
 		
+		if(!s)
+		{
+			std::cout << "recording is empty" << std::endl;
+			return LegState(0, 0, 0, 0, 0, 0);
+		}
+
 		float minDist = current.dist(recording.at(cachedLatestDiffIdx));
 		int minIdx = cachedLatestDiffIdx;
 
@@ -109,7 +119,16 @@ struct RecordingMan {
 		}
 
 		cachedLatestDiffIdx = minIdx;
-		return current.getDiff(recording.at(minIdx));
+		auto r = current.getDiff(recording.at(minIdx));
+		
+		// for(int i = 0; i < 6; ++i)
+		// 	std::cout << r.rpyAngles[i] << " ";
+		// std::cout << "\n";
+
+
+		return r; 
+
+
 	}
 };
 

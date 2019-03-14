@@ -40,16 +40,21 @@ struct LraPacketGenerator
 		intensities[upperInd] = mag * lowerDist / s;		
 	}
 
-	void lraRotatePacket(uint8_t* packet, int intensity)
+	void lraRotatePacket(uint8_t* packet, float intensity)
 	{
 		packet[0] = SOP;
 		packet[1] = LRA_CONTROL;
 		packet[2] = LRA_SPIN;
-		packet[3] = intensity;
-		
-		memset(packet + 4, 0, 16);
 
-		packet[POS_CHECKSUM] = LRA_CONTROL + LRA_SPIN + intensity;
+		memcpy(packet + 3, &intensity, sizeof(float));		
+		memset(packet + 7, 0, 16);
+		
+		packet[POS_CHECKSUM] = 0;		
+		for(int i = 1; i < 15; ++i)
+		{
+			packet[POS_CHECKSUM] += packet[i];
+		}
+
 	}
 
 	void lraRawPacket(uint8_t* packet, float angle, float mag)
@@ -62,7 +67,7 @@ struct LraPacketGenerator
 
 		packet[POS_CHECKSUM] = 0;
 		
-		for(int i = 1; i < NUM_LRAS+4; ++i)
+		for(int i = 1; i < 15; ++i)
 		{
 			packet[POS_CHECKSUM] += packet[i];
 		}
@@ -82,9 +87,9 @@ void generatePacket(uint8_t* packet, const LegState& diff, int boardIdx)
 	}
 	else
 	{
-		rd = (diff.rpyAngles[0]);
-		pd = (diff.rpyAngles[1]);		
-		yd = (diff.rpyAngles[2]);
+		rd = (diff.rpyAngles[3]);
+		pd = (diff.rpyAngles[4]);		
+		yd = (diff.rpyAngles[5]);
 	}
     
     if(IS_GREATEST(abs(yd), abs(rd), abs(pd)))

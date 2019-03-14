@@ -239,7 +239,7 @@ class IMUDataMsg:
         xAccel = struct.unpack('<h', xAccelBytes)[0]
 
         timestampBytes = bytes[19:22]
-        timestamp = struct.unpack('<i', timestampBytes + z)[0]
+        timestamp = struct.unpack('<I', timestampBytes + z)[0]
 
         return IMUDataMsg(quat, xAccel, timestamp)
 

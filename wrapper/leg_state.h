@@ -50,8 +50,8 @@ struct LegState {
 		return sumsq;
 	}
 
-	static LegState fromIMU(const Quaternion& currShank, Quaternion currThigh,
-							Quaternion initialShank, Quaternion initialThigh) {
+	static LegState fromIMU(const Quaternion& currShank, const Quaternion& currThigh,
+							const Quaternion& initialShank, const Quaternion& initialThigh) {
 
 		float rpyAngles[NUM_STATES];
 

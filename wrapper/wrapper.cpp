@@ -130,6 +130,7 @@ uint8_t ser_newPacketAvailable(unsigned port)
 }
 
 uint8_t packet[PACKET_SIZE];
+uint8_t lraPacket[PACKET_SIZE];
 
 uint8_t* ser_getLastPacket(unsigned port)
 {
@@ -140,6 +141,15 @@ uint8_t* ser_getLastPacket(unsigned port)
 	ser[port]->getLastPacket(packet, PACKET_SIZE);
 	lastId = id;
 	return packet;
+}
+
+uint8_t* ser_getLraPacket(unsigned port)
+{
+	if(port >= NUM_PORTS)
+			return lraPacket;
+
+	ser[port]->ser_getLraPacket(lraPacket, PACKET_SIZE);
+	return lraPacket;
 }
 
 void ser_startLogging(unsigned port)

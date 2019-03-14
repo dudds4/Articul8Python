@@ -51,6 +51,17 @@ struct LegState {
 		return sumsq;
 	}
 
+	LegState avg(const LegState& other) const {
+		
+		float f[6];
+		for(int i = 0; i < 6; ++i)
+		{
+			f[i] = (this->rpyAngles[i] + other.rpyAngles[i])/2;
+		}
+
+		return LegState(f);
+	}
+
     // TODO: Make constructor
 	LegState(	const Quaternion& currShank, const Quaternion& currThigh,
 				const Quaternion& initialShank, const Quaternion& initialThigh) {
@@ -69,9 +80,8 @@ struct LegState {
 
 		Quaternion localThighDiff = Quaternion(globalThighDiff.w, thighCoords.x, thighCoords.y, thighCoords.z);
 
-		saveRPYAngles(this->rpyAngles,   localShankDiff);
-		saveRPYAngles(this->rpyAngles+3, localThighDiff);
-
+		saveRPYAngles(this->rpyAngles, localThighDiff);
+		saveRPYAngles(this->rpyAngles+3,   localShankDiff);
 		// return LegState(rpyAngles);
 	}
 

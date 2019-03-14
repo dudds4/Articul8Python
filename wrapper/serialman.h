@@ -102,6 +102,8 @@ struct SerialMan : Periodic<SerialMan>
     bool wakeFromLongSleep() { return serial->isOpen(); }
     bool goToLongSleep() { return !serial->isOpen(); }
 
+    int fbCounter = 0;
+
     void handleParseResult(int result)
     {
 		switch(result) {
@@ -120,25 +122,34 @@ struct SerialMan : Periodic<SerialMan>
 
 		      			// LegState l(asdf);
 
-			      		lraPacketGenerator.generatePacket(
-			      			hotpathPacket,
-			      			// l,
+			      		bool made = lraPacketGenerator.generatePacket(
+			      			lraPacket,
 			      			recordingMan->getLatestStateDiff(),
 			      			serial_id);
 
-			      		if(m_exercising)
+			      		if(LIKELY(made && m_exercising))
 			      		{
 			      			// std::cout << "sending packet" << std::endl;
 
 				        	GUARD(myMutex);
-				        	serial->write(hotpathPacket, PACKET_SIZE);
+				        	serial->write(lraPacket, PACKET_SIZE);
 
 				        	// for(int j = 0; j < PACKET_SIZE; ++j)
-				        	// 	std::cout << (int)hotpathPacket[j] << " ";
+				        	// 	std::cout << (int)lraPacket[j] << " ";
 
 				        	// std::cout << std::endl;
 				        	
 			      		}
+		      		}
+		      		else
+		      		{
+			      		lraPacketGenerator.generatePacket(
+			      			lraPacket,
+			      			LegState(0, 0, 0, 0, 0, 0),
+			      			serial_id);		   
+
+			        	GUARD(myMutex);
+			        	serial->write(lraPacket, PACKET_SIZE);			      		   			
 		      		}
 		      	}
 
@@ -244,6 +255,12 @@ struct SerialMan : Periodic<SerialMan>
 		memcpy(dst, lastpacket, nb);
 	}
 
+	void getLastLraPacket(uint8_t* dst, uint16_t max) const
+	{
+		uint16_t nb = std::min(max, (uint16_t)PACKET_SIZE);
+		memcpy(dst, lraPacket, nb);
+	}
+
     void periodicTask() 
     {
     	checkIncomingSerial();
@@ -277,6 +294,18 @@ struct SerialMan : Periodic<SerialMan>
 
     bool stopExercise() {
     	m_exercising = false;
+
+  		lraPacketGenerator.generatePacket(
+  			lraPacket,
+  			LegState(0, 0, 0, 0, 0, 0),
+  			serial_id);		   
+
+  		Msg m;
+  		m.resize(PACKET_SIZE);
+  		memcpy(m.data(), lraPacket, PACKET_SIZE);
+
+  		sendMsg(m);
+
     	return !m_exercising;
     }
 
@@ -288,7 +317,7 @@ private:
 	unsigned long packetId = 0;
 
 	uint8_t lastpacket[PACKET_SIZE];
-	uint8_t hotpathPacket[PACKET_SIZE];
+	uint8_t lraPacket[PACKET_SIZE];
 	QuickQueue<Msg> outgoing;
 	mutable std::mutex myMutex;
 	bool logging = false;

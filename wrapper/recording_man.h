@@ -27,6 +27,7 @@ struct RecordingMan {
 	}
 
 	void beginRecording() {
+		GUARD(myMutex);
 		recording.clear();
 		quatsRecieved[0] = false;
 		quatsRecieved[1] = false;
@@ -35,6 +36,14 @@ struct RecordingMan {
 	}
 	void stopRecording() {
 		isRecording = false;
+
+		// let's condense this bad boy
+		// GUARD(myMutex);
+		// for(int i = recording.size()-2; i >= 1; --i)
+		// {
+
+		// }
+
 	}
 
 	void receivedQuat(float* quat, int idx)
@@ -54,36 +63,43 @@ struct RecordingMan {
 		}		
 	}
 
-	void recievedQuat(const Quaternion& q, int idx) {
-		if (!quatsRecieved[idx]) {
-			initialQuats[idx] = q;
-		}
+	// void recievedQuat(const Quaternion& q, int idx) {
+	// 	if (!quatsRecieved[idx]) {
+	// 		initialQuats[idx] = q;
+	// 	}
 
-		quatsRecieved[idx] = true;
-		latestQuats[idx] = q;
+	// 	quatsRecieved[idx] = true;
+	// 	latestQuats[idx] = q;
 
-		if (isRecording && quatsRecieved[0] && quatsRecieved[1]) {
-			GUARD(myMutex);
+	// 	if (isRecording && quatsRecieved[0] && quatsRecieved[1]) {
+	// 		GUARD(myMutex);
 
-			recording.emplace_back(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
-			// recording.push_back(LegState::fromIMU(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]));
-		}
-	}
+	// 		recording.emplace_back(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
+	// 		// recording.push_back(LegState::fromIMU(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]));
+	// 	}
+	// }
 
 	int cachedLatestDiffIdx = 0;
 
 	// only to be called while not recording, so no synchronization needed
 	LegState getLatestStateDiff()
 	{
-		LegState current = LegState(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
-		int nChecks = recording.size() / 5;
-		int s = recording.size();
-		
-		if(!s)
+
+		int nChecks, s;
 		{
-			std::cout << "recording is empty" << std::endl;
-			return LegState(0, 0, 0, 0, 0, 0);
+			GUARD(myMutex);
+
+			nChecks = recording.size() / 2;
+			s = recording.size();
+			
+			if(!s)
+			{
+				// std::cout << "recording is empty" << std::endl;
+				return LegState(0, 0, 0, 0, 0, 0);
+			}
 		}
+
+		LegState current = LegState(latestQuats[1], latestQuats[0], initialQuats[1], initialQuats[0]);
 
 		float minDist = current.dist(recording.at(cachedLatestDiffIdx));
 		int minIdx = cachedLatestDiffIdx;
@@ -120,6 +136,7 @@ struct RecordingMan {
 
 		cachedLatestDiffIdx = minIdx;
 		auto r = current.getDiff(recording.at(minIdx));
+		// auto r = recording.at(minIdx).getDiff(current);
 		
 		// for(int i = 0; i < 6; ++i)
 		// 	std::cout << r.rpyAngles[i] << " ";

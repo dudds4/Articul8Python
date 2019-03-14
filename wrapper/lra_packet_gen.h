@@ -40,8 +40,11 @@ struct LraPacketGenerator
 		intensities[upperInd] = mag * lowerDist / s;		
 	}
 
-	void lraRotatePacket(uint8_t* packet, float intensity)
+	bool lraRotatePacket(uint8_t* packet, float intensity)
 	{
+		if(cacheIsSpin && intensity == cacheMag) 
+			return false;
+
 		packet[0] = SOP;
 		packet[1] = LRA_CONTROL;
 		packet[2] = LRA_SPIN;
@@ -55,10 +58,22 @@ struct LraPacketGenerator
 			packet[POS_CHECKSUM] += packet[i];
 		}
 
+		cacheIsSpin = true;
+		cacheMag = intensity;
+		return true;
 	}
 
-	void lraRawPacket(uint8_t* packet, float angle, float mag)
+	#define DIST_SQR_THRESHOLD 20
+
+	bool lraRawPacket(uint8_t* packet, float angle, float mag)
 	{
+		if(!cacheIsSpin)
+		{
+			float distSqr = (mag*mag + cacheMag*cacheMag - 2*mag*cacheMag*cos(angle-cacheAngle));
+			if(distSqr < DIST_SQR_THRESHOLD)
+				return false;
+		}
+		
 		packet[0] = SOP;
 		packet[1] = LRA_CONTROL;
 		packet[2] = LRA_NO_SPIN;
@@ -71,15 +86,21 @@ struct LraPacketGenerator
 		{
 			packet[POS_CHECKSUM] += packet[i];
 		}
+
+		cacheIsSpin = false;
+		cacheMag = mag;
+		cacheAngle = angle;
+		return true;
 	}
 
-void generatePacket(uint8_t* packet, const LegState& diff, int boardIdx)
+#define THIGH_IDX 0
+bool generatePacket(uint8_t* packet, const LegState& diff, int boardIdx)
 {	    
 	uint8_t intensities[NUM_LRAS];
 
 	float yd, rd, pd;
 
-	if(boardIdx == 0)
+	if(boardIdx == THIGH_IDX)
 	{
 		rd = (diff.rpyAngles[0]);
 		pd = (diff.rpyAngles[1]);
@@ -92,26 +113,26 @@ void generatePacket(uint8_t* packet, const LegState& diff, int boardIdx)
 		yd = (diff.rpyAngles[5]);
 	}
     
-    if(IS_GREATEST(abs(yd), abs(rd), abs(pd)))
+    if(abs(yd) > abs(pd) && abs(yd) > abs(rd))
     {
     	float mag = 6 * abs(yd) * 180 / PI;
     	float angle = yd > 0 ? PI / 2 : 3*PI/2;
-    	lraRawPacket(packet, angle, mag);
+    	return lraRawPacket(packet, angle, mag);
     }
     else if(abs(pd) > abs(rd))
     {
     	float mag = 8 * abs(rd) * 180 / PI;
     	float angle = pd > 0 ? 0 : PI;
-    	lraRawPacket(packet, angle, mag);
+    	return lraRawPacket(packet, angle, mag);
     }
-    else if(abs(rd) > (12*PI/180))
+    else if(abs(rd) > (16*PI/180))
     {
     	float mag = rd > 0 ? 1 : -1;
-    	lraRotatePacket(packet, mag*0.8);
+    	return lraRotatePacket(packet, mag*0.8);
     }
     else
     {
-    	lraRawPacket(packet, 0, 0);
+    	return lraRawPacket(packet, 0, 0);
     }
 }
 
@@ -119,6 +140,10 @@ void generatePacket(uint8_t* packet, const LegState& diff, int boardIdx)
 
 	float* bounds;
 	int NUM_LRAS;
+
+	float cacheMag;
+	float cacheAngle;
+	int cacheIsSpin;
 };
 
 

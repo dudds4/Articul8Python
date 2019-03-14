@@ -17,6 +17,7 @@ uint8_t ser_send(const uint8_t* msg, unsigned n, unsigned port);
 
 uint8_t ser_newPacketAvailable(unsigned port);
 uint8_t* ser_getLastPacket(unsigned port);
+uint8_t* ser_getLraPacket(unsigned port);
 
 void ser_startLogging(unsigned port);
 void ser_stopLogging(unsigned port);

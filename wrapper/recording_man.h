@@ -89,7 +89,7 @@ struct RecordingMan {
 		{
 			GUARD(myMutex);
 
-			nChecks = recording.size() / 2;
+			nChecks = recording.size() / 4;
 			s = recording.size();
 			
 			if(!s)

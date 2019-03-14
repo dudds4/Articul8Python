@@ -91,7 +91,7 @@ struct LegState {
 		}
 	}
 
-	inline float getDist(const LegState& a, const LegState& b)
+	inline float getDist(const LegState& b)
 	{
 		LegState diff = getDiff(b);
 

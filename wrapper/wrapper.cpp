@@ -124,9 +124,9 @@ uint8_t ser_newPacketAvailable(unsigned port)
 
 	// id of 0 means we haven't received a packet yet
 	unsigned long id = ser[port]->getLastPacketId();
-	uint8_t result = (id != lastId);
+	uint8_t isAvailable = (id != lastId);
 
-	return result;
+	return isAvailable;
 }
 
 uint8_t packet[PACKET_SIZE];
@@ -148,7 +148,7 @@ uint8_t* ser_getLraPacket(unsigned port)
 	if(port >= NUM_PORTS)
 			return lraPacket;
 
-	ser[port]->ser_getLraPacket(lraPacket, PACKET_SIZE);
+	ser[port]->getLraPacket(lraPacket, PACKET_SIZE);
 	return lraPacket;
 }
 

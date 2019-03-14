@@ -116,12 +116,8 @@ struct SerialMan : Periodic<SerialMan>
 		      	{
 		      		recordingMan->receivedQuat((float*)&lastpacket[POS_DATA], serial_id);
 		      		
-		      		if(!recording)
+		      		if(LIKELY(!recording))
 		      		{
-		      			float asdf[6];
-
-		      			// LegState l(asdf);
-
 			      		bool made = lraPacketGenerator.generatePacket(
 			      			lraPacket,
 			      			recordingMan->getLatestStateDiff(),
@@ -129,28 +125,20 @@ struct SerialMan : Periodic<SerialMan>
 
 			      		if(LIKELY(made && m_exercising))
 			      		{
-			      			// std::cout << "sending packet" << std::endl;
-
 				        	GUARD(myMutex);
-				        	serial->write(lraPacket, PACKET_SIZE);
-
-				        	// for(int j = 0; j < PACKET_SIZE; ++j)
-				        	// 	std::cout << (int)lraPacket[j] << " ";
-
-				        	// std::cout << std::endl;
-				        	
+				        	serial->write(lraPacket, PACKET_SIZE);				        	
 			      		}
 		      		}
-		      		else
-		      		{
-			      		lraPacketGenerator.generatePacket(
-			      			lraPacket,
-			      			LegState(0, 0, 0, 0, 0, 0),
-			      			serial_id);		   
+		      		// else
+		      		// {
+			      	// 	lraPacketGenerator.generatePacket(
+			      	// 		lraPacket,
+			      	// 		LegState(0, 0, 0, 0, 0, 0),
+			      	// 		serial_id);		   
 
-			        	GUARD(myMutex);
-			        	serial->write(lraPacket, PACKET_SIZE);			      		   			
-		      		}
+			       //  	GUARD(myMutex);
+			       //  	serial->write(lraPacket, PACKET_SIZE);			      		   			
+		      		// }
 		      	}
 
      //            if(lastpacket[POS_TYPE] == 10)
@@ -255,7 +243,7 @@ struct SerialMan : Periodic<SerialMan>
 		memcpy(dst, lastpacket, nb);
 	}
 
-	void getLastLraPacket(uint8_t* dst, uint16_t max) const
+	void getLraPacket(uint8_t* dst, uint16_t max) const
 	{
 		uint16_t nb = std::min(max, (uint16_t)PACKET_SIZE);
 		memcpy(dst, lraPacket, nb);

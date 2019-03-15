@@ -76,7 +76,7 @@ struct LegState {
 	}
 
 	LegState(	const Quaternion& currShank, const Quaternion& currThigh,
-				const Quaternion& initialShank, const Quaternion& initialThigh) {
+				const Quaternion& initialShank, const Quaternion& initialThigh, bool verbose=false) {
 
 		computeRPYAngles(this->rpyAngles, currThigh, initialThigh);
 		computeRPYAngles(this->rpyAngles+3, currShank, initialShank);

@@ -33,7 +33,7 @@ def commandWorker():
             msg = OffsetMsg.toBytes()
 
         elif (x == 'spin'):
-            msg = LRACmdMsg(True, 0.3).toBytes()
+            msg = LRACmdMsg(True, 0.8).toBytes()
 
         elif (x == 'stop'):
             msg = LRACmdMsg(False, [0]*8).toBytes()

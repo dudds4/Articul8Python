@@ -178,10 +178,9 @@ struct RecordingMan {
 
 			std::cout << "Did a rep!" << std::endl;
 
+			// Multiply initialExerciseQuats by roll quaternion inverse
 			initialExerciseQuats[0] = latestQuats[0];
 			initialExerciseQuats[1] = latestQuats[1];
-
-			// Multiply initialExerciseQuats by roll quaternion inverse
 
 			// {
 			// 	initialExerciseQuats[0] = zeroExtRot(
@@ -230,6 +229,14 @@ struct RecordingMan {
 			// if (abs(test.rpyAngles[3]) < threshold) {
 			// 	std::cout << "Shank is GOOD" << std::endl;
 			// }
+			LegState test = LegState(latestQuats[1], latestQuats[0], initialExerciseQuats[1], initialExerciseQuats[0]);
+			float threshold = 0.001;
+			if (abs(test.rpyAngles[0]) < threshold) {
+				std::cout << "Thigh is GOOD" << std::endl;
+			}
+			if (abs(test.rpyAngles[3]) < threshold) {
+				std::cout << "Shank is GOOD" << std::endl;
+			}
 		}
 
 		cachedLatestDiffIdx = minIdx;

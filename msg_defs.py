@@ -111,13 +111,14 @@ class CalibrateMsg:
         return wrapDataInPacket(data)
 
 class LRACmdMsg:
-    def __init__(self, isSpin, cmdValue):
+    def __init__(self, isSpin, cmdValue, spintensity=127):
         self.isSpin = isSpin
         if (isSpin):
             #TODO: Check spinFreq is between -10 and 10
             cmdValue = float(cmdValue)
             if (type(cmdValue) is float):
                 self.spinFreq = cmdValue
+                self.spintensity = spintensity
         else:
             # TODO: Check intensities are integers <127
             if (type(cmdValue) is list):
@@ -128,6 +129,7 @@ class LRACmdMsg:
         if (self.isSpin):
             data += struct.pack('B', LRA_SPIN)
             data += struct.pack('f', self.spinFreq)
+            data += struct.pack('B', self.spintensity)
         else:
             data += struct.pack('B', LRA_NO_SPIN)
             for i in range(len(self.intensities)):

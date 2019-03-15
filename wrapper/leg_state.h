@@ -63,26 +63,25 @@ struct LegState {
 		return LegState(f);
 	}
 
+	void computeRPYAngles(float* angles, const Quaternion& current, const Quaternion& initial)
+	{
+		Quaternion globalDiff = initial.getProduct(current.getConjugate());
+		
+		VectorFloat coords(globalDiff.x, globalDiff.y, globalDiff.z);
+		coords.rotate(current.getConjugate());
+		
+		Quaternion localDiff = Quaternion(globalDiff.w, coords.x, coords.y, coords.z);
+		
+		saveRPYAngles(angles, localDiff);
+	}
+
 	LegState(	const Quaternion& currShank, const Quaternion& currThigh,
 				const Quaternion& initialShank, const Quaternion& initialThigh) {
 
-		Quaternion globalShankDiff = initialShank.getProduct(currShank.getConjugate());
-		VectorFloat shankCoords(globalShankDiff.x, globalShankDiff.y, globalShankDiff.z);
-		shankCoords.rotate(currShank.getConjugate());
+		computeRPYAngles(this->rpyAngles, currThigh, initialThigh);
+		computeRPYAngles(this->rpyAngles+3, currShank, initialShank);
 
-		Quaternion localShankDiff = Quaternion(globalShankDiff.w, currShank.x, currShank.y, currShank.z);
-
-		Quaternion globalThighDiff = initialThigh.getProduct(currThigh.getConjugate());
-		VectorFloat thighCoords(globalThighDiff.x, globalThighDiff.y, globalThighDiff.z);
-		thighCoords.rotate(currThigh.getConjugate());
-
-		Quaternion localThighDiff = Quaternion(globalThighDiff.w, thighCoords.x, thighCoords.y, thighCoords.z);
-
-		saveRPYAngles(this->rpyAngles,   localThighDiff);
-		saveRPYAngles(this->rpyAngles+3, localShankDiff);
-		// return LegState(rpyAngles);
 	}
-
 
 	inline LegState getDiff(const LegState& b) const
 	{

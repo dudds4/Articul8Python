@@ -13,6 +13,9 @@
 #define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
 #endif
 
+Quaternion zeroExtRot(float goalRoll, float goalPitch, float goalYaw, const Quaternion& q);
+Quaternion ThreeAxis(const VectorFloat &v, float angle);
+
 struct RecordingMan {
 
 	std::vector<LegState> recording;
@@ -166,20 +169,64 @@ struct RecordingMan {
 			}
 		}
 
-		std::cout << "Min Idx: " << minIdx << " / " << s << std::endl;
+		// std::cout << "Min Idx: " << minIdx << " / " << s << std::endl;
 
 		if (minIdx < cachedLatestDiffIdx) {
+
 			std::cout << "Did a rep!" << std::endl;
+
+			initialExerciseQuats[0] = latestQuats[0];
+			initialExerciseQuats[1] = latestQuats[1];
+			
 			// Multiply initialExerciseQuats by roll quaternion inverse
 
-			LegState test = LegState(latestQuats[1], latestQuats[0], initialExerciseQuats[1], initialExerciseQuats[0]);
-			float threshold = 0.01;
-			if (abs(test.rpyAngles[0]) < threshold) {
-				std::cout << "Thigh is GOOD" << std::endl;
-			}
-			if (abs(test.rpyAngles[3]) < threshold) {
-				std::cout << "Shank is GOOD" << std::endl;
-			}
+			// {
+			// 	initialExerciseQuats[0] = zeroExtRot(
+			// 								recording.at(minIdx).rpyAngles[0],
+			// 								current.rpyAngles[1],
+			// 								current.rpyAngles[2],
+			// 								latestQuats[0]
+			// 	);
+				
+			// 	initialExerciseQuats[1] = zeroExtRot(
+			// 								recording.at(minIdx).rpyAngles[3],
+			// 								current.rpyAngles[4],
+			// 								current.rpyAngles[5],
+			// 								latestQuats[1]
+			// 	);
+
+			// 	// initialExerciseQuats[0] = q.getProduct(latestQuats[0]);
+
+			// 	// q = 	Quaternion(xaxis, recording.at(minIdx).rpyAngles[3]).getProduct(
+			// 	// 				Quaternion(yaxis, current.rpyAngles[4]).getProduct(
+			// 	// 					Quaternion(zaxis, current.rpyAngles[5])
+
+			// 	// 					));
+
+			// 	// initialExerciseQuats[1] = q.getProduct(latestQuats[1]);		
+
+			// }
+
+			// LegState test = LegState(latestQuats[1], latestQuats[0], initialExerciseQuats[1], initialExerciseQuats[0]);
+
+			// LegState goalState(
+			// 	recording.at(minIdx).rpyAngles[0],
+			// 	current.rpyAngles[1],
+			// 	current.rpyAngles[2],
+			// 	recording.at(minIdx).rpyAngles[3],
+			// 	current.rpyAngles[4],
+			// 	current.rpyAngles[5]
+			// 	);
+
+			// test = test.getDiff(goalState);
+
+			// float threshold = 0.001;
+			// if (abs(test.rpyAngles[0]) < threshold) {
+			// 	std::cout << "Thigh is GOOD" << std::endl;
+			// }
+			// if (abs(test.rpyAngles[3]) < threshold) {
+			// 	std::cout << "Shank is GOOD" << std::endl;
+			// }
 		}
 
 		cachedLatestDiffIdx = minIdx;
@@ -190,5 +237,29 @@ struct RecordingMan {
 	}
 };
 
+
+Quaternion zeroExtRot(float goalRoll, float goalPitch, float goalYaw, const Quaternion& qCurrent)
+{
+	VectorFloat xAxis(1, 0, 0);
+	VectorFloat yAxis(0, 1, 0);
+	VectorFloat zAxis(0, 0, 1);
+
+	xAxis.rotate(&qCurrent);
+	yAxis.rotate(&qCurrent);
+	zAxis.rotate(&qCurrent);
+
+	auto qGlobalDiff = 	ThreeAxis(xAxis, goalRoll).getProduct(
+						ThreeAxis(yAxis, goalPitch).getProduct(
+						ThreeAxis(zAxis, goalYaw)
+						));
+
+	return qGlobalDiff.getProduct(qCurrent);
+}
+
+Quaternion ThreeAxis(const VectorFloat &v, float angle)
+{
+    float s = sin(angle/2) / v.getMagnitude();
+    return Quaternion(cos(angle/2), s*v.x, s*v.y, s*v.z);
+}
 
 #endif

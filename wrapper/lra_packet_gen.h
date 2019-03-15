@@ -18,6 +18,8 @@ struct LraPacketGenerator
 
 	void interpolateAngle(float angle, float mag, uint8_t* intensities)
 	{
+		if(mag > 127) mag = 127;
+		if(mag < 0) mag = 0;
 
 		float seg = 2 * PI / NUM_LRAS;
 		int idx1=0, idx2;
@@ -28,7 +30,6 @@ struct LraPacketGenerator
 
 		float portion2 = (angle - idx1 * seg) / seg;
 		float portion1 = 1 - portion2;
-
 
 		memset(intensities, 0, NUM_LRAS);
 		intensities[idx1] = portion1 * mag;
@@ -117,37 +118,51 @@ bool generatePacket(uint8_t* packet, const LegState& diff, int boardIdx)
 	uint8_t intensities[NUM_LRAS];
 
 	float yd, rd, pd;
+	const float rollScale = 2;
+	const float pitchScale = 1;
+	const float yawScale = 0.5;
 
 	if(boardIdx == THIGH_IDX)
 	{
-		rd = (diff.rpyAngles[0]);
-		pd = (diff.rpyAngles[1]);
-		yd = (diff.rpyAngles[2]);
+		rd = (diff.rpyAngles[0]) * rollScale;
+		pd = (diff.rpyAngles[1]) * pitchScale;
+		yd = (diff.rpyAngles[2]) * yawScale;
 	}
 	else
 	{
-		rd = (diff.rpyAngles[3]);
-		pd = (diff.rpyAngles[4]);		
-		yd = (diff.rpyAngles[5]);
+		rd = (diff.rpyAngles[3]) * rollScale;
+		pd = (diff.rpyAngles[4]) * pitchScale;		
+		yd = (diff.rpyAngles[5]) * yawScale;
 	}
-    
-    if(abs(yd) > abs(pd) && abs(yd)*2 > abs(rd))
+
+	const float rollThresh = 0.1;
+	const float pitchThresh = 0.3;
+	const float yawThresh = 0.3;
+
+	float factor = 7;
+    if(abs(yd) > abs(pd) && abs(yd) > abs(rd))
     {
-    	float mag = 8 * abs(yd) * 180 / PI;
+
+    	// float mag = pow(4 * yd * 180 / PI, 2);
+    	float mag = 10*exp(5*(abs(yd) - yawThresh));
     	float angle = yd > 0 ? PI / 2 : 3 * PI/2;
+    	// float mag = 8 * abs(yd) * 180 / PI;
     	return lraRawPacket(packet, angle, mag);
     }
-    else if(abs(pd)*2 > abs(rd))
+    else if(abs(pd) > abs(rd))
     {
-    	float mag = 8 * abs(rd) * 180 / PI;
-    	float angle = pd > 0 ? PI : 0;
+    	float mag = 10*exp(5*(abs(pd) - pitchThresh));
+
+    	// float mag = pow(4 * pd * 180 / PI, 2);
+    	// float mag = 8 * abs(rd) * 180 / PI;
+    	float angle = pd > 0 ? 0 : PI;
     	return lraRawPacket(packet, angle, mag);
     }
-    else if(abs(rd) > (16*PI/180))
-    {
-    	float mag = rd > 0 ? 1 : -1;
-    	return lraRotatePacket(packet, mag*0.8);
-    }
+    // else if(abs(rd) > (16*PI/180))
+    // {
+    // 	float mag = rd > 0 ? 1 : -1;
+    // 	return lraRotatePacket(packet, mag*0.8);
+    // }
     else
     {
     	return lraRawPacket(packet, 0, 0);

@@ -36,6 +36,8 @@ THE SOFTWARE.
 #include <stdint.h>
 #include "msg_defs.h"
 
+class VectorFloat;
+
 class Quaternion {
     public:
         float w;
@@ -48,6 +50,22 @@ class Quaternion {
             x = 0.0f;
             y = 0.0f;
             z = 0.0f;
+        }
+
+        Quaternion(float* axis, float angle) {
+            float s = sin(angle/2);
+            float m = 0;
+            for(int i = 0; i < 3; ++i)
+                m += axis[i]*axis[i];
+
+            s /= m;
+
+            w = cos(angle/2);
+            
+            x = s * axis[0];
+            y = s * axis[1];
+            z = s * axis[2];
+
         }
 
         Quaternion(float nw, float nx, float ny, float nz) {
@@ -131,7 +149,7 @@ class VectorInt16 {
             z = nz;
         }
 
-        float getMagnitude() {
+        float getMagnitude() const {
             return sqrt(x*x + y*y + z*z);
         }
 
@@ -198,7 +216,7 @@ class VectorFloat {
             z = nz;
         }
 
-        float getMagnitude() {
+        float getMagnitude() const {
             return sqrt(x*x + y*y + z*z);
         }
 
@@ -215,7 +233,7 @@ class VectorFloat {
             return r;
         }
         
-        void rotate(Quaternion *q) {
+        void rotate(const Quaternion *q) {
             Quaternion p(0, x, y, z);
 
             // quaternion multiplication: q * p, stored back in p

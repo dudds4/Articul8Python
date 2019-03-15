@@ -44,11 +44,12 @@ struct LegState {
 	}
 
 	inline float dist(const LegState& otherLegState) const {
-		float sumsq = 0;
-		for (int i = 0; i < NUM_STATES; i++) {
-			sumsq += (rpyAngles[i] - otherLegState.rpyAngles[i])*(rpyAngles[i] - otherLegState.rpyAngles[i]);
-		}
-		return sumsq;
+		// float sumsq = 0;
+		// for (int i = 0; i < NUM_STATES; i++) {
+		// 	sumsq += (rpyAngles[i] - otherLegState.rpyAngles[i])*(rpyAngles[i] - otherLegState.rpyAngles[i]);
+		// }
+		// return sumsq;
+		return (rpyAngles[2] - otherLegState.rpyAngles[2])*(rpyAngles[2] - otherLegState.rpyAngles[2]);
 	}
 
 	LegState avg(const LegState& other) const {
@@ -62,11 +63,8 @@ struct LegState {
 		return LegState(f);
 	}
 
-    // TODO: Make constructor
 	LegState(	const Quaternion& currShank, const Quaternion& currThigh,
 				const Quaternion& initialShank, const Quaternion& initialThigh) {
-
-		// float rpyAngles[NUM_STATES];
 
 		Quaternion globalShankDiff = initialShank.getProduct(currShank.getConjugate());
 		VectorFloat shankCoords(globalShankDiff.x, globalShankDiff.y, globalShankDiff.z);
@@ -80,8 +78,8 @@ struct LegState {
 
 		Quaternion localThighDiff = Quaternion(globalThighDiff.w, thighCoords.x, thighCoords.y, thighCoords.z);
 
-		saveRPYAngles(this->rpyAngles, localThighDiff);
-		saveRPYAngles(this->rpyAngles+3,   localShankDiff);
+		saveRPYAngles(this->rpyAngles,   localThighDiff);
+		saveRPYAngles(this->rpyAngles+3, localShankDiff);
 		// return LegState(rpyAngles);
 	}
 

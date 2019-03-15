@@ -131,16 +131,16 @@ bool generatePacket(uint8_t* packet, const LegState& diff, int boardIdx)
 		yd = (diff.rpyAngles[5]);
 	}
     
-    if(abs(yd) > abs(pd) && abs(yd) > abs(rd))
+    if(abs(yd) > abs(pd) && abs(yd)*2 > abs(rd))
     {
-    	float mag = 6 * abs(yd) * 180 / PI;
+    	float mag = 8 * abs(yd) * 180 / PI;
     	float angle = yd > 0 ? PI / 2 : 3 * PI/2;
     	return lraRawPacket(packet, angle, mag);
     }
-    else if(abs(pd) > abs(rd))
+    else if(abs(pd)*2 > abs(rd))
     {
     	float mag = 8 * abs(rd) * 180 / PI;
-    	float angle = pd > 0 ? 0 : PI;
+    	float angle = pd > 0 ? PI : 0;
     	return lraRawPacket(packet, angle, mag);
     }
     else if(abs(rd) > (16*PI/180))

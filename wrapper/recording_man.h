@@ -28,6 +28,8 @@ struct RecordingMan {
 	bool m_recording = false;
 	bool m_exercising = false;
 
+	int cachedLatestDiffIdx = 0;
+
 	RecordingMan() {
 		recording = std::vector<LegState>();
 		quatsRecieved[0] = false;
@@ -57,6 +59,8 @@ struct RecordingMan {
 		gotInitialExercise[1] = false;
 
 		m_exercising = true;
+
+		cachedLatestDiffIdx = 0;
 	}
 
 	void stopExercise() {
@@ -101,8 +105,6 @@ struct RecordingMan {
 	// 	}
 	// }
 
-	int cachedLatestDiffIdx = 0;
-
 	// only to be called while not recording, so no synchronization needed
 	LegState getLatestStateDiff()
 	{
@@ -127,13 +129,17 @@ struct RecordingMan {
 
 		LegState current = LegState(latestQuats[1], latestQuats[0], initialExerciseQuats[1], initialExerciseQuats[0]);
 
+		// std::cout << "Curr Roll: " << current.rpyAngles[0];
+		// std::cout << ", Curr Pitch: " << current.rpyAngles[1];
+		// std::cout << ", Curr Yaw: " << current.rpyAngles[2] << std::endl;
+
 		float minDist = current.dist(recording.at(cachedLatestDiffIdx));
 		int minIdx = cachedLatestDiffIdx;
 
 		float tmp;
 		int i;
 
-		for(i = cachedLatestDiffIdx+1; i < nChecks && i < s; ++i)
+		for(i = cachedLatestDiffIdx+1; i < cachedLatestDiffIdx + nChecks && i < s; ++i)
 		{
 			tmp = current.dist(recording.at(i));
 			
@@ -145,9 +151,9 @@ struct RecordingMan {
 		}
 
 		// check if we need to loop around
-		if(i < nChecks)
+		if(i >= s)
 		{
-			nChecks -= i;
+			nChecks -= (i-cachedLatestDiffIdx-1);
 			for(i = 0; i < nChecks; ++i)
 			{
 				tmp = current.dist(recording.at(i));
@@ -160,6 +166,14 @@ struct RecordingMan {
 			}
 		}
 
+		std::cout << "Min Idx: " << minIdx << " / " << s << std::endl;
+
+		if (minIdx < cachedLatestDiffIdx) {
+			std::cout << "Did a rep!" << std::endl;
+			// Multiply initialExerciseQuats by roll quaternion inverse
+			// Ensure that roll(latest) == roll(initialExercise)
+		}
+
 		cachedLatestDiffIdx = minIdx;
 		auto r = current.getDiff(recording.at(minIdx));
 		// auto r = recording.at(minIdx).getDiff(current);
@@ -167,7 +181,6 @@ struct RecordingMan {
 		return r; 
 	}
 };
-
 
 
 #endif

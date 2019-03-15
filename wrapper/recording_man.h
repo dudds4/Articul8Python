@@ -136,6 +136,8 @@ struct RecordingMan {
 		// std::cout << ", Curr Pitch: " << current.rpyAngles[1];
 		// std::cout << ", Curr Yaw: " << current.rpyAngles[2] << std::endl;
 
+		GUARD(myMutex);
+
 		float minDist = current.dist(recording.at(cachedLatestDiffIdx));
 		int minIdx = cachedLatestDiffIdx;
 
@@ -152,6 +154,7 @@ struct RecordingMan {
 				minIdx = i;
 			}
 		}
+
 
 		// check if we need to loop around
 		if(i >= s)
@@ -177,7 +180,7 @@ struct RecordingMan {
 
 			initialExerciseQuats[0] = latestQuats[0];
 			initialExerciseQuats[1] = latestQuats[1];
-			
+
 			// Multiply initialExerciseQuats by roll quaternion inverse
 
 			// {

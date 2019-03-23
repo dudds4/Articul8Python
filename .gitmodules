@@ -1,0 +1,3 @@
+[submodule "privserial"]
+	path = serial
+	url = https://github.com/dudds4/serial.git
